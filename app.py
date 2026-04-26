@@ -38,9 +38,6 @@ st.markdown("""
     .control-panel input, .control-panel select { background: var(--bg-card) !important; border: 1px solid var(--border) !important; color: white !important; border-radius: 10px !important; padding: 0.6rem 0.8rem !important; width: 100% !important; transition: all 0.2s; }
     .control-panel input:focus, .control-panel select:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 2px rgba(20,184,166,0.2); outline: none; }
     .control-panel .stSlider > div > div > div > div { background: var(--accent) !important; }
-    .stRadio > div { flex-wrap: nowrap !important; gap: 0.5rem !important; }
-    .stRadio label { font-size: 0.85rem !important; padding: 0.4rem 0.8rem !important; border-radius: 8px !important; border: 1px solid var(--border) !important; transition: all 0.2s; }
-    .stRadio label:has(input:checked) { background: var(--accent-grad) !important; color: white !important; border-color: transparent !important; }
     
     .stFormSubmitButton button {
         background: var(--accent-grad) !important; background-size: 200% 200% !important;
@@ -153,47 +150,20 @@ def detect_breakouts(df):
                     broken.append(prev); break
     return np.unique(np.round(broken, 2)) if broken else np.array([])
 
-def score_zone(price, fibs, rounds, demands, breakouts, ath, min_drop, max_drop, scenario):
-    drop_from_ath = (ath - price) / ath
-    if drop_from_ath < min_drop or drop_from_ath > max_drop:
-        return -1, []
-
+def score_zone(price, fibs, rounds, demands, breakouts, ath):
     reasons = []
-    # Scores bruts
+    s = 0
     fib_dev = min([abs(price-f)/f for f in [fibs['0.500'], fibs['0.618']]])
-    fib_raw = 40 * max(0, 1 - fib_dev * 5) if fib_dev < 0.04 else 0
-    if fib_raw > 0: reasons.append("Fibonacci 0.5/0.618")
-
+    if fib_dev < 0.04: s += 40 * max(0, 1 - fib_dev * 5); reasons.append("Fibonacci 0.5/0.618")
     round_dev = min([abs(price-r)/r for r in rounds])
-    round_raw = 20 * max(0, 1 - round_dev * 10) if round_dev < 0.02 else 0
-    if round_raw > 0: reasons.append("Niveau Psychologique")
-
-    dem_raw = 0
+    if round_dev < 0.02: s += 20 * max(0, 1 - round_dev * 10); reasons.append("Niveau Psychologique")
     if len(demands) > 0:
         dem_dev = min([abs(price-d)/d for d in demands])
-        if dem_dev < 0.04:
-            dem_raw = 25 * max(0, 1 - dem_dev * 4)
-            reasons.append("Zone de Demande")
-
-    brk_raw = 0
+        if dem_dev < 0.04: s += 25 * max(0, 1 - dem_dev * 4); reasons.append("Zone de Demande")
     if len(breakouts) > 0:
         brk_dev = min([abs(price-b)/b for b in breakouts])
-        if brk_dev < 0.03:
-            brk_raw = 15 * max(0, 1 - brk_dev * 5)
-            reasons.append("Breakout Retest")
-
-    # 🎛️ AJUSTEMENT PAR SCÉNARIO
-    if "Baissier" in scenario:
-        # Privilégie supports profonds & zones de demande
-        total = (fib_raw * 0.9 + round_raw * 0.7 + dem_raw * 1.5 + brk_raw * 0.8)
-    elif "Range" in scenario:
-        # Équilibre retour à la moyenne
-        total = (fib_raw + round_raw + dem_raw + brk_raw)
-    else:  # Haussier
-        # Favorise continuité de tendance & retests
-        total = (fib_raw * 1.2 + round_raw * 0.8 + dem_raw * 0.7 + brk_raw * 1.6)
-
-    return min(total, 100), reasons
+        if brk_dev < 0.03: s += 15 * max(0, 1 - brk_dev * 5); reasons.append("Breakout Retest")
+    return min(s, 100), reasons
 
 def backtest(df, zone):
     periods = 3 * 52
@@ -211,7 +181,7 @@ def build_chart(df, z_mid, currency, valid_zone):
     
     if valid_zone:
         fig.add_hline(y=z_mid, line_width=3, line_color="#00ff00", line_dash="solid", 
-                      annotation_text=f"🎯 ENTRY: {currency}{z_mid:.2f}", annotation_position="right",
+                      annotation_text=f"🎯 ZONE: {currency}{z_mid:.2f}", annotation_position="right",
                       annotation_font=dict(color="#00ff00", size=11, family="Inter"))
     fig.add_hline(y=df['High'].max(), line_dash="dash", line_color="#ef5350", line_width=1, opacity=0.6)
     fig.add_hline(y=df.iloc[-1]['Close'], line_dash="dot", line_color="#60a5fa", line_width=1, opacity=0.6)
@@ -229,7 +199,7 @@ st.markdown("<div class='app-wrapper'>", unsafe_allow_html=True)
 st.markdown(LOGO_SVG, unsafe_allow_html=True)
 st.markdown("<div class='brand-header'><h1 class='brand-title'>BuyTheDip</h1><p class='brand-subtitle'>Points d'entrée institutionnels. Zéro bruit.</p></div>", unsafe_allow_html=True)
 
-# 🎯 FORMULAIRE AVANCÉ
+# 🎯 FORMULAIRE ÉPURÉ
 with st.form(key="scan_form", clear_on_submit=False):
     st.markdown("<div class='control-panel'>", unsafe_allow_html=True)
     c1, c2 = st.columns([2.5, 1], gap="medium")
@@ -239,17 +209,9 @@ with st.form(key="scan_form", clear_on_submit=False):
         st.markdown("<br>", unsafe_allow_html=True)
         submit = st.form_submit_button("⚡ SCAN", use_container_width=True)
     
-    # Ligne 1: Devise | Scénario | Score Min
-    cols1 = st.columns(3, gap="medium")
-    with cols1[0]: currency = st.selectbox("💱 Devise", ["$", "€", "£"], index=0, key="currency")
-    with cols1[1]: scenario = st.radio("📊 Scénario", ["🐻 Baissier", "⚖️ Range", "🐂 Haussier"], horizontal=True, key="scenario")
-    with cols1[2]: min_score = st.slider("🎯 Score min", 0, 100, 50, key="min_score")
-
-    # Ligne 2: Drawdowns
-    cols2 = st.columns(2, gap="medium")
-    with cols2[0]: min_drop = st.slider("📉 Mini Drawdown (%)", 0, 50, 10, key="min_drop")
-    with cols2[1]: max_drop = st.slider("📈 Max Drawdown (%)", 20, 90, 81, key="max_drop")
-    
+    cols = st.columns(2, gap="medium")
+    with cols[0]: currency = st.selectbox("💱 Devise", ["$", "€", "£"], index=0, key="currency")
+    with cols[1]: min_score = st.slider("🎯 Score min", 0, 100, 50, key="min_score")
     st.markdown("</div>", unsafe_allow_html=True)
 
 if submit:
@@ -267,9 +229,6 @@ if submit:
         atl = df['Low'].min()
         market_cap = get_market_cap(ticker)
         
-        if min_drop >= max_drop:
-            st.error("❌ Le Mini Drawdown doit être inférieur au Max Drawdown."); st.stop()
-        
         fibs = calc_fib(ath, atl)
         rounds = find_rounds(current)
         demands = detect_demand(df)
@@ -277,12 +236,11 @@ if submit:
         
         best_price, best_score, best_reasons = 0, 0, []
         for p in df['Close']:
-            sc, reasons = score_zone(p, fibs, rounds, demands, breakouts, ath, min_drop/100, max_drop/100, scenario)
+            sc, reasons = score_zone(p, fibs, rounds, demands, breakouts, ath)
             if sc > best_score: best_price, best_score, best_reasons = p, sc, reasons
             
         if best_score == 0:
-            mid_drop = (min_drop + max_drop) / 2
-            best_price = ath * (1 - mid_drop/100)
+            best_price = current
             
         valid_zone = best_score >= min_score
         drop = ((best_price - ath) / ath) * 100
@@ -292,7 +250,7 @@ if submit:
         st.markdown("<div class='key-metrics-row'>", unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
         with c1: st.markdown(f"<div class='key-card'><div class='key-label'>💰 Prix Actuel</div><div class='key-value'>{current:.2f} {currency}</div><div class='key-delta delta-neg'>{((current-ath)/ath)*100:.1f}% vs ATH</div></div>", unsafe_allow_html=True)
-        with c2: st.markdown(f"<div class='key-card'><div class='key-label'>🎯 Prix Cible</div><div class='key-value' style='color:#00ff00'>{best_price:.2f} {currency}</div><div class='key-delta delta-pos'>{drop:.1f}% vs ATH</div></div>", unsafe_allow_html=True)
+        with c2: st.markdown(f"<div class='key-card'><div class='key-label'>🎯 Zone d'achat parfaite</div><div class='key-value' style='color:#00ff00'>{best_price:.2f} {currency}</div><div class='key-delta delta-pos'>{drop:.1f}% vs ATH</div></div>", unsafe_allow_html=True)
         with c3: st.markdown(f"<div class='key-card'><div class='key-label'>🏢 Market Cap</div><div class='key-value'>{market_cap}</div></div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
         
@@ -303,18 +261,13 @@ if submit:
         st.markdown("<h3 class='section-title'>💡 Pourquoi entrer à ce prix ?</h3>", unsafe_allow_html=True)
         if valid_zone:
             main_reason = best_reasons[0] if best_reasons else "Alignement technique optimal sur support majeur"
-            st.markdown(f"<div class='alert-box alert-success'>✅ <b>Raison principale :</b> Le prix cible converge avec <u>{main_reason}</u>. Score {best_score:.0f}/100 ≥ {min_score} (seuil config).</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='alert-box alert-success'>✅ <b>Raison principale :</b> Le prix converge avec <u>{main_reason}</u>. Score {best_score:.0f}/100 ≥ {min_score}.</div>", unsafe_allow_html=True)
         else:
-            st.markdown(f"<div class='alert-box alert-danger'>🛑 <b>Zone non validée :</b> Score {best_score:.0f}/100 < {min_score}. La confluence est insuffisante pour ce scénario.</div>", unsafe_allow_html=True)
-        
+            st.markdown(f"<div class='alert-box alert-danger'>🛑 <b>Zone non validée :</b> Score {best_score:.0f}/100 < {min_score}. Confluence insuffisante.</div>", unsafe_allow_html=True)
+            
         # CONFIGURATION APPLIQUÉE
-        st.markdown("<h3 class='section-title'>⚙️ Configuration Appliquée</h3>", unsafe_allow_html=True)
-        st.markdown(f"""
-        <div class='alert-box alert-info'>
-        📊 <b>Scénario :</b> {scenario} | 🎯 <b>Score min requis :</b> {min_score}/100<br>
-        📉 <b>Plage de correction :</b> -{min_drop}% à -{max_drop}% vs ATH ({currency}{ath:.2f})
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("<h3 class='section-title'>⚙️ Configuration</h3>", unsafe_allow_html=True)
+        st.markdown(f"<div class='alert-box alert-info'>🎯 <b>Score min requis :</b> {min_score}/100 | 💱 <b>Devise :</b> {currency}</div>", unsafe_allow_html=True)
             
         # DÉTAILS TECHNIQUES
         st.markdown("<h3 class='section-title'>🔍 Confluence & Backtest</h3>", unsafe_allow_html=True)
