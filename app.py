@@ -8,101 +8,109 @@ from plotly.subplots import make_subplots
 import warnings
 
 warnings.filterwarnings('ignore')
-st.set_page_config(page_title="BuyTheDip | Smart Entry Points", layout="centered", page_icon="📈")
+st.set_page_config(page_title="BuyTheDip | Simply Wall St Style", layout="wide", page_icon="📈")
 
-# 🎨 CSS PREMIUM
+# 🎨 CSS STYLE SIMPLY WALL ST
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
     :root {
-        --bg-main: #0b0e14; --bg-card: #131620; --border: #222738;
-        --text-primary: #e2e8f0; --text-secondary: #94a3b8;
-        --accent: #14b8a6; --accent-grad: linear-gradient(135deg, #0ea5e9, #14b8a6, #0ea5e9);
-        --tv-green: #26a69a; --tv-red: #ef5350; --tv-bg: #131722; --tv-grid: #2a2e39;
-        --risk-low: #10b981; --risk-med: #f59e0b; --risk-high: #ef4444;
+        --bg-main: #f8f9fa; --bg-card: #ffffff; --border: #e5e7eb;
+        --text-primary: #111827; --text-secondary: #6b7280;
+        --sww-blue: #3b82f6; --sww-green: #10b981; --sww-orange: #f59e0b;
+        --sww-red: #ef4444; --sww-purple: #8b5cf6; --sww-pink: #ec4899;
     }
     .main { background-color: var(--bg-main); color: var(--text-primary); font-family: 'Inter', system-ui, sans-serif; }
     header, footer, [data-testid="stDecoration"], .stDeployButton { display: none !important; }
     
-    .app-wrapper { max-width: 1000px; margin: 0 auto; padding: 2rem 1rem; }
-    .brand-header { text-align: center; margin-bottom: 1.5rem; }
-    .brand-logo { width: 80px; height: 80px; margin: 0 auto 1rem; display: block; }
-    .brand-title { font-size: 2.4rem; font-weight: 800; background: var(--accent-grad); background-size: 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: gradText 4s ease infinite; letter-spacing: -0.5px; margin: 0; }
-    .brand-subtitle { color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.3rem; }
-    @keyframes gradText { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+    .app-wrapper { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
+    .brand-header { text-align: center; margin-bottom: 2rem; padding: 2rem; background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .brand-title { font-size: 2.2rem; font-weight: 800; color: var(--sww-blue); letter-spacing: -0.5px; }
+    .brand-subtitle { color: var(--text-secondary); font-size: 1rem; margin-top: 0.5rem; }
     
-    .stForm { background: transparent; border: none; }
-    .stForm > div { background: transparent !important; }
-    
-    .control-panel { padding: 1rem 0 1.5rem; }
+    .control-panel { background: white; border-radius: 16px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .control-panel label { color: var(--text-secondary) !important; font-size: 0.75rem !important; font-weight: 600 !important; margin-bottom: 0.4rem !important; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
-    .control-panel input, .control-panel select { background: var(--bg-card) !important; border: 1px solid var(--border) !important; color: white !important; border-radius: 10px !important; padding: 0.6rem 0.8rem !important; width: 100% !important; transition: all 0.2s; }
-    .control-panel input:focus, .control-panel select:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 2px rgba(20,184,166,0.2); outline: none; }
-    .control-panel .stSlider > div > div > div > div { background: var(--accent) !important; }
+    .control-panel input, .control-panel select { background: #f9fafb !important; border: 1px solid var(--border) !important; color: var(--text-primary) !important; border-radius: 8px !important; padding: 0.6rem 0.8rem !important; width: 100% !important; transition: all 0.2s; }
+    .control-panel input:focus, .control-panel select:focus { border-color: var(--sww-blue) !important; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); outline: none; }
     
     .stFormSubmitButton button {
-        background: var(--accent-grad) !important; background-size: 200% 200% !important;
-        animation: btnPulse 3s ease infinite !important;
-        color: white !important; border: none !important; border-radius: 12px !important;
-        padding: 1rem 0 !important; font-weight: 800 !important; font-size: 1.1rem !important;
-        width: 100% !important; letter-spacing: 2px; text-transform: uppercase;
-        box-shadow: 0 0 25px rgba(20,184,166,0.35) !important;
-        transition: all 0.3s cubic-bezier(0.4,0,0.2,1) !important; position: relative; overflow: hidden;
+        background: linear-gradient(135deg, var(--sww-blue), var(--sww-purple)) !important;
+        color: white !important; border: none !important; border-radius: 8px !important;
+        padding: 0.9rem 0 !important; font-weight: 600 !important; font-size: 1rem !important;
+        width: 100% !important; letter-spacing: 0.5px;
+        box-shadow: 0 4px 6px rgba(59,130,246,0.2) !important;
+        transition: all 0.2s !important;
     }
-    .stFormSubmitButton button:hover { transform: translateY(-3px) scale(1.02) !important; box-shadow: 0 0 40px rgba(20,184,166,0.6) !important; }
-    .stFormSubmitButton button::after {
-        content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-        background: linear-gradient(transparent, rgba(255,255,255,0.15), transparent);
-        transform: rotate(45deg); animation: shine 2.5s infinite;
-    }
-    @keyframes btnPulse { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
-    @keyframes shine { 0%{left:-50%} 100%{left:150%} }
+    .stFormSubmitButton button:hover { transform: translateY(-1px); box-shadow: 0 6px 12px rgba(59,130,246,0.3) !important; }
     
-    .key-metrics-row { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; justify-content: center; }
-    .key-card { flex: 1; min-width: 180px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 1rem; text-align: center; transition: all 0.2s; }
-    .key-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-    .key-label { font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 0.4rem; }
-    .key-value { font-size: 1.4rem; font-weight: 700; color: var(--text-primary); }
-    .key-delta { font-size: 0.8rem; margin-top: 0.2rem; font-weight: 600; }
-    .delta-pos { color: #00ff00; } .delta-neg { color: var(--tv-red); }
+    .section-card { background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .section-title { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .section-icon { width: 24px; height: 24px; }
     
-    .fundamental-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.8rem; margin: 1rem 0; }
-    .fund-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 0.9rem; text-align: center; }
-    .fund-label { font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem; }
+    .snowflake-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: center; }
+    .metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+    .metric-card { background: #f9fafb; border-radius: 8px; padding: 1rem; text-align: center; border-left: 4px solid var(--sww-blue); }
+    .metric-card.value { border-left-color: var(--sww-blue); }
+    .metric-card.growth { border-left-color: var(--sww-green); }
+    .metric-card.profitability { border-left-color: var(--sww-orange); }
+    .metric-card.health { border-left-color: var(--sww-purple); }
+    .metric-card.dividend { border-left-color: var(--sww-pink); }
+    
+    .metric-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem; font-weight: 600; }
+    .metric-value { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); }
+    .metric-score { font-size: 0.85rem; margin-top: 0.2rem; font-weight: 600; }
+    .score-a { color: var(--sww-green); }
+    .score-b { color: var(--sww-blue); }
+    .score-c { color: var(--sww-orange); }
+    .score-d { color: var(--sww-red); }
+    
+    .key-metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+    .key-card { background: white; border-radius: 12px; padding: 1.25rem; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: transform 0.2s; }
+    .key-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .key-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 0.5rem; font-weight: 600; }
+    .key-value { font-size: 1.6rem; font-weight: 700; color: var(--text-primary); }
+    .key-delta { font-size: 0.85rem; margin-top: 0.3rem; font-weight: 600; }
+    .delta-pos { color: var(--sww-green); }
+    .delta-neg { color: var(--sww-red); }
+    
+    .fundamental-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin: 1rem 0; }
+    .fund-card { background: #f9fafb; border-radius: 8px; padding: 1rem; text-align: center; }
+    .fund-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem; font-weight: 600; }
     .fund-value { font-size: 1.1rem; font-weight: 600; color: var(--text-primary); }
-    .risk-badge { display: inline-block; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
-    .risk-low { background: rgba(16,185,129,0.15); color: var(--risk-low); border: 1px solid var(--risk-low); }
-    .risk-med { background: rgba(245,158,11,0.15); color: var(--risk-med); border: 1px solid var(--risk-med); }
-    .risk-high { background: rgba(239,68,68,0.15); color: var(--risk-high); border: 1px solid var(--risk-high); }
     
-    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 1rem; text-align: center; transition: transform 0.2s, border-color 0.2s; }
-    .card:hover { border-color: var(--accent); transform: translateY(-2px); }
-    .metric-label { font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 0.3rem; }
-    .metric-value { font-size: 1.2rem; font-weight: 700; color: var(--text-primary); }
+    .risk-badge { display: inline-block; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+    .risk-low { background: rgba(16,185,129,0.1); color: var(--sww-green); border: 1px solid var(--sww-green); }
+    .risk-med { background: rgba(245,158,11,0.1); color: var(--sww-orange); border: 1px solid var(--sww-orange); }
+    .risk-high { background: rgba(239,68,68,0.1); color: var(--sww-red); border: 1px solid var(--sww-red); }
     
-    .section-title { border-left: 4px solid var(--accent); padding-left: 0.8rem; margin: 1.5rem 0 0.8rem; font-size: 1.05rem; font-weight: 600; }
-    .alert-box { padding: 0.9rem 1.1rem; border-radius: 10px; margin: 0.8rem 0; border: 1px solid; font-size: 0.9rem; animation: fadeIn 0.3s ease; }
-    @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
-    .alert-warning { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); color: #fbbf24; }
-    .alert-success { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); color: #34d399; }
-    .alert-danger { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #f87171; }
-    .alert-info { background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.3); color: #60a5fa; }
-    .app-footer { text-align: center; margin-top: 2.5rem; padding: 1rem; color: var(--text-secondary); font-size: 0.75rem; border-top: 1px solid var(--border); }
+    .alert-box { padding: 1rem 1.25rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid; font-size: 0.9rem; }
+    .alert-success { background: rgba(16,185,129,0.05); border-color: var(--sww-green); color: var(--text-primary); }
+    .alert-warning { background: rgba(245,158,11,0.05); border-color: var(--sww-orange); color: var(--text-primary); }
+    .alert-info { background: rgba(59,130,246,0.05); border-color: var(--sww-blue); color: var(--text-primary); }
+    
+    .chart-container { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
+    
+    .app-footer { text-align: center; margin-top: 3rem; padding: 1.5rem; color: var(--text-secondary); font-size: 0.8rem; border-top: 1px solid var(--border); }
+    
+    @media (max-width: 768px) {
+        .snowflake-grid, .key-metrics-row, .fundamental-grid { grid-template-columns: 1fr; }
+        .metric-grid { grid-template-columns: 1fr; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # 🖼️ LOGO SVG
 LOGO_SVG = """
-<svg class="brand-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+<svg width="48" height="48" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <defs>
-        <linearGradient id="logoGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-            <stop offset="0%" style="stop-color:#0ea5e9;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#14b8a6;stop-opacity:1" />
+        <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
         </linearGradient>
     </defs>
-    <rect x="5" y="5" width="90" height="90" rx="20" fill="none" stroke="url(#logoGrad)" stroke-width="4"/>
-    <path d="M25 65 L45 45 L60 55 L80 25" fill="none" stroke="url(#logoGrad)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M70 25 L80 25 L80 35" fill="none" stroke="url(#logoGrad)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="5" y="5" width="90" height="90" rx="20" fill="url(#logoGrad)"/>
+    <path d="M30 65 L45 50 L60 55 L75 35" fill="none" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="75" cy="35" r="4" fill="white"/>
 </svg>
 """
 
@@ -132,11 +140,17 @@ def get_fundamentals(ticker):
             'sector': info.get('sector', 'N/A'),
             'beta': info.get('beta', 1.0),
             'debt_to_equity': info.get('debtToEquity'),
-            'market_cap': info.get('marketCap', 0)
+            'market_cap': info.get('marketCap', 0),
+            'revenue_growth': info.get('revenueGrowth', 0),
+            'earnings_growth': info.get('earningsGrowth', 0),
+            'dividend_yield': info.get('dividendYield', 0),
+            'roe': info.get('returnOnEquity', 0),
+            'debt_to_equity_ratio': info.get('debtToEquity', 0)
         }
     except:
-        return {'pe_ratio': None, 'profitable': None, 'free_cashflow': None, 'total_cash': None, 
-                'sector': 'N/A', 'beta': None, 'debt_to_equity': None, 'market_cap': 0}
+        return {'pe_ratio': None, 'profitable': False, 'free_cashflow': None, 'total_cash': None,
+                'sector': 'N/A', 'beta': None, 'debt_to_equity': None, 'market_cap': 0,
+                'revenue_growth': 0, 'earnings_growth': 0, 'dividend_yield': 0, 'roe': 0, 'debt_to_equity_ratio': 0}
 
 def calc_risk_score(fund, df):
     score = 0
@@ -203,72 +217,208 @@ def score_zone(price, fibs, rounds, demands, breakouts, ath):
         if brk_dev < 0.03: s += 15 * max(0, 1 - brk_dev * 5); reasons.append("Breakout")
     return min(s, 100), reasons
 
-def backtest(df, zone_low, zone_high, years):
-    periods = int(years * 52)
-    idx = np.argmin(np.abs(df['Close'].values - (zone_low + zone_high)/2))
-    exit_idx = min(idx + periods, len(df)-1)
-    entry = (zone_low + zone_high) / 2
-    total = (df.iloc[exit_idx]['Close'] - entry) / entry * 100
-    annual = ((1 + total/100)**(1/years) - 1)*100 if years > 0 else 0
-    return total, annual
+def calculate_section_scores(fund, df):
+    """Calcule les scores par section comme Simply Wall St"""
+    scores = {}
+    
+    # Value Score (0-6)
+    value_score = 0
+    if fund['pe_ratio'] and fund['pe_ratio'] < 15: value_score += 2
+    elif fund['pe_ratio'] and fund['pe_ratio'] < 25: value_score += 1
+    if fund['profitable']: value_score += 1
+    if fund.get('roe', 0) > 0.15: value_score += 1
+    scores['value'] = min(value_score, 6)
+    
+    # Growth Score (0-6)
+    growth_score = 0
+    if fund.get('revenue_growth', 0) > 0.1: growth_score += 2
+    elif fund.get('revenue_growth', 0) > 0.05: growth_score += 1
+    if fund.get('earnings_growth', 0) > 0.1: growth_score += 2
+    elif fund.get('earnings_growth', 0) > 0.05: growth_score += 1
+    scores['growth'] = min(growth_score, 6)
+    
+    # Profitability Score (0-6)
+    profit_score = 0
+    if fund['profitable']: profit_score += 2
+    if fund.get('roe', 0) > 0.1: profit_score += 2
+    if fund.get('free_cashflow', 0) and fund['free_cashflow'] > 0: profit_score += 2
+    scores['profitability'] = min(profit_score, 6)
+    
+    # Health Score (0-6)
+    health_score = 0
+    debt_ratio = fund.get('debt_to_equity_ratio', 0)
+    if debt_ratio and debt_ratio < 0.5: health_score += 3
+    elif debt_ratio and debt_ratio < 1: health_score += 2
+    elif not debt_ratio: health_score += 1
+    if fund['profitable']: health_score += 1
+    scores['health'] = min(health_score, 6)
+    
+    # Dividend Score (0-6)
+    div_score = 0
+    div_yield = fund.get('dividend_yield', 0)
+    if div_yield and div_yield > 0.04: div_score += 3
+    elif div_yield and div_yield > 0.02: div_score += 2
+    elif div_yield and div_yield > 0.01: div_score += 1
+    if fund['profitable']: div_score += 1
+    scores['dividend'] = min(div_score, 6)
+    
+    return scores
 
-def build_chart(df, zone_low, zone_high, currency, valid_zone, years):
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.75, 0.25])
-    fig.add_trace(go.Candlestick(x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
-                                 increasing_line_color='#26a69a', decreasing_line_color='#ef5350'), row=1, col=1)
-    colors = ['#26a69a' if c >= o else '#ef5350' for c, o in zip(df['Close'], df['Open'])]
-    fig.add_trace(go.Bar(x=df.index, y=df['Volume'], marker_color=colors, opacity=0.6), row=2, col=1)
+def create_snowflake_chart(scores):
+    """Crée le radar chart style Simply Wall St"""
+    categories = ['Value', 'Growth', 'Profitability', 'Health', 'Dividend']
+    values = [scores['value'], scores['growth'], scores['profitability'], scores['health'], scores['dividend']]
     
-    if valid_zone and len(df) > 0:
-        fig.add_hrect(y0=zone_low, y1=zone_high, fillcolor="rgba(0, 255, 0, 0.15)", line_width=0,
-                      annotation_text=f"🎯 ZONE: {currency}{zone_low:.2f} → {currency}{zone_high:.2f}",
-                      annotation_position="top right", annotation_font=dict(color="#00ff00", size=10))
-        fig.add_hline(y=zone_low, line_width=2, line_color="#00ff00", line_dash="dot", opacity=0.7)
-        fig.add_hline(y=zone_high, line_width=2, line_color="#00ff00", line_dash="dot", opacity=0.7)
+    # Fermer le polygone
+    values += values[:1]
+    angles = np.linspace(0, 2 * np.pi, len(categories), endpoint=False).tolist() + [0]
     
-    if len(df) > 0:
-        fig.add_hline(y=df['High'].max(), line_dash="dash", line_color="#ef5350", line_width=1, opacity=0.6)
-        fig.add_hline(y=df.iloc[-1]['Close'], line_dash="dot", line_color="#60a5fa", line_width=1, opacity=0.6)
+    fig = go.Figure()
     
-    height = 400 if years <= 1 else (500 if years <= 3 else 580)
-    fig.update_layout(height=height, template='plotly_dark', plot_bgcolor='#131722', paper_bgcolor='#131722',
-                      font=dict(color='#d1d4dc', family="Inter", size=11), xaxis_rangeslider_visible=False, 
-                      showlegend=False, hovermode='x unified', margin=dict(l=10, r=10, t=20, b=10),
-                      title=f"📊 {years} an(s) | {len(df)} semaines de données")
-    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#2a2e39', zerolinecolor='#2a2e39')
-    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#2a2e39', zerolinecolor='#2a2e39', row=1, col=1)
+    # Polygone principal
+    fig.add_trace(go.Scatterpolar(
+        r=values,
+        theta=categories + [categories[0]],
+        fill='toself',
+        fillcolor='rgba(59, 130, 246, 0.25)',
+        line=dict(color='#3b82f6', width=3),
+        name='Score'
+    ))
+    
+    # Points aux sommets
+    fig.add_trace(go.Scatterpolar(
+        r=values[:-1],
+        theta=categories,
+        mode='markers+text',
+        marker=dict(size=8, color='#3b82f6'),
+        text=[str(v) for v in values[:-1]],
+        textposition='top center',
+        textfont=dict(size=12, color='#111827', weight='bold'),
+        name='Points'
+    ))
+    
+    fig.update_layout(
+        polar=dict(
+            radialaxis=dict(
+                visible=True,
+                range=[0, 6],
+                tickmode='array',
+                tickvals=[0, 2, 4, 6],
+                tickcolor='#e5e7eb',
+                gridcolor='#e5e7eb',
+                linecolor='#e5e7eb'
+            ),
+            angularaxis=dict(
+                tickcolor='#e5e7eb',
+                gridcolor='#e5e7eb',
+                rotation=90,
+                direction='clockwise'
+            ),
+            bgcolor='rgba(249, 250, 251, 0.5)'
+        ),
+        showlegend=False,
+        margin=dict(l=40, r=40, t=40, b=40),
+        height=400,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)'
+    )
+    
+    return fig
+
+def create_price_chart(df, zone_low, zone_high, currency):
+    """Crée un graphique de prix propre style Simply Wall St"""
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
+                       vertical_spacing=0.03, row_heights=[0.7, 0.3])
+    
+    # Prix
+    fig.add_trace(go.Scatter(
+        x=df.index, y=df['Close'],
+        mode='lines',
+        line=dict(color='#3b82f6', width=2),
+        name='Prix',
+        fill='tozeroy',
+        fillcolor='rgba(59, 130, 246, 0.1)'
+    ), row=1, col=1)
+    
+    # Zone d'achat
+    fig.add_hrect(y0=zone_low, y1=zone_high, 
+                  fillcolor="rgba(16, 185, 129, 0.15)", 
+                  line_width=0,
+                  annotation_text=f"Zone d'achat",
+                  annotation_position="top right")
+    fig.add_hline(y=zone_low, line_width=2, line_color="#10b981", line_dash="dash")
+    fig.add_hline(y=zone_high, line_width=2, line_color="#10b981", line_dash="dash")
+    
+    # ATH
+    fig.add_hline(y=df['High'].max(), line_dash="dash", line_color="#ef4444", 
+                  line_width=1, opacity=0.6, annotation_text="ATH")
+    
+    # Volume
+    colors = ['#10b981' if df['Close'].iloc[i] >= df['Open'].iloc[i] else '#ef4444' 
+              for i in range(len(df))]
+    fig.add_trace(go.Bar(
+        x=df.index, y=df['Volume'],
+        marker_color=colors,
+        opacity=0.6,
+        name='Volume'
+    ), row=2, col=1)
+    
+    fig.update_layout(
+        height=500,
+        template='plotly_white',
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        font=dict(color='#111827', family="Inter", size=11),
+        showlegend=False,
+        hovermode='x unified',
+        margin=dict(l=10, r=10, t=20, b=10)
+    )
+    
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#f3f4f6', zeroline=False)
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#f3f4f6', zeroline=False, row=1, col=1)
     fig.update_yaxes(showgrid=False, row=2, col=1)
+    
     return fig
 
 # 🖥️ INTERFACE
 st.markdown("<div class='app-wrapper'>", unsafe_allow_html=True)
-st.markdown(LOGO_SVG, unsafe_allow_html=True)
-st.markdown("<div class='brand-header'><h1 class='brand-title'>BuyTheDip</h1><p class='brand-subtitle'>Points d'entrée institutionnels. Zéro bruit.</p></div>", unsafe_allow_html=True)
+st.markdown(f"""
+<div class='brand-header'>
+    {LOGO_SVG}
+    <h1 class='brand-title'>BuyTheDip</h1>
+    <p class='brand-subtitle'>Analyse fondamentale et technique style Simply Wall St</p>
+</div>
+""", unsafe_allow_html=True)
 
 with st.form(key="scan_form", clear_on_submit=False):
     st.markdown("<div class='control-panel'>", unsafe_allow_html=True)
-    c1, c2 = st.columns([2.5, 1], gap="medium")
-    with c1: 
-        company = st.text_input("🏢 Entreprise", value="Apple", key="company", placeholder="Ex: Apple, Tesla...")
-    with c2: 
+    cols = st.columns([2, 1, 1, 1])
+    with cols[0]: 
+        company = st.text_input("🏢 Entreprise", value="Apple", key="company", 
+                               placeholder="Ex: Apple, Tesla, Microsoft...")
+    with cols[1]: 
+        currency = st.selectbox("💱 Devise", ["$", "€", "£"], index=0, key="currency")
+    with cols[2]: 
+        precision = st.selectbox("🎯 Précision", ["Faible", "Moyenne", "Haute"], 
+                                index=1, key="precision")
+    with cols[3]: 
+        hold_years = st.selectbox("⏳ Horizon", [1, 3, 5, 10], index=1, key="hold_years")
         st.markdown("<br>", unsafe_allow_html=True)
-        submit = st.form_submit_button("⚡ SCAN", use_container_width=True)
-    
-    cols = st.columns(3, gap="medium")
-    with cols[0]: currency = st.selectbox("💱 Devise", ["$", "€", "£"], index=0, key="currency")
-    with cols[1]: precision = st.selectbox("🎯 Précision", ["Faible", "Moyenne", "Haute"], index=1, key="precision")
-    with cols[2]: hold_years = st.selectbox("⏳ Horizon", [1, 3, 5, 10], index=1, key="hold_years")
+    submit = st.form_submit_button("⚡ Analyser", use_container_width=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 if submit:
-    with st.spinner(f"⚙️ Scan sur {hold_years} an(s) (Précision: {precision})..."):
+    threshold_map = {"Faible": 40, "Moyenne": 60, "Haute": 80}
+    threshold = threshold_map[precision]
+
+    with st.spinner(f"🔍 Analyse en cours..."):
         ticker, full_name = resolve_ticker(company)
         if not ticker:
             st.error("❌ Actif introuvable."); st.stop()
             
         df = fetch_data(ticker, hold_years)
         if df.empty:
-            st.error(f"❌ Données insuffisantes sur {hold_years} an(s)."); st.stop()
+            st.error(f"❌ Données insuffisantes."); st.stop()
             
         current = df.iloc[-1]['Close']
         ath = df['High'].max()
@@ -278,41 +428,31 @@ if submit:
         risk_score = calc_risk_score(fund, df)
         risk_label, risk_class = get_risk_label(risk_score)
         
+        # Calcul des scores par section
+        section_scores = calculate_section_scores(fund, df)
+        total_score = sum(section_scores.values())
+        
+        # Zone d'achat
         fibs = calc_fib(ath, atl)
         rounds = find_rounds(current)
         demands = detect_demand(df)
         breakouts = detect_breakouts(df)
         
-        # 🧠 CALCUL PRÉALABLE DE TOUS LES SCORES POUR DÉTECTER LE MAX HISTORIQUE
         all_candidates = []
         for p in df['Close']:
             sc, reasons = score_zone(p, fibs, rounds, demands, breakouts, ath)
             all_candidates.append({'price': p, 'score': sc, 'reasons': reasons})
-            
+        
         max_hist_score = max([c['score'] for c in all_candidates]) if all_candidates else 0
         
-        # 🎯 MAPPING DYNAMIQUE DE LA PRÉCISION
         if precision == "Haute":
-            threshold = max_hist_score  # ✅ UTILISE TOUJOURS LA VALEUR MAXIMALE EXISTANTE
-            precision_label = f"Maximale ({threshold}/100)"
-        elif precision == "Moyenne":
-            threshold = 60
-            precision_label = "Moyenne (60/100)"
-        else:
-            threshold = 40
-            precision_label = "Faible (40/100)"
-            
+            threshold = max_hist_score
+        
         valid_candidates = [c for c in all_candidates if c['score'] >= threshold]
         
-        # Fallback intelligent si la précision haute est trop stricte
         if len(valid_candidates) < 2:
-            if precision == "Haute":
-                valid_candidates = sorted(all_candidates, key=lambda x: x['score'], reverse=True)[:2]
-                precision_label += " (Top 2 historiques)"
-            else:
-                valid_candidates = sorted(all_candidates, key=lambda x: x['score'], reverse=True)[:2]
-                
-        # Extraction des 2 zones
+            valid_candidates = sorted(all_candidates, key=lambda x: x['score'], reverse=True)[:2]
+        
         if len(valid_candidates) >= 2:
             valid_candidates.sort(key=lambda x: x['score'], reverse=True)
             z1 = valid_candidates[0]['price']
@@ -323,24 +463,85 @@ if submit:
             else:
                 z2 = z1 * 0.95
             zone_high, zone_low = (z1, z2) if z1 > z2 else (z2, z1)
-            zone_method = f"Confluence {precision_label}"
         else:
             zone_high, zone_low = ath * 0.75, ath * 0.65
-            zone_method = "Fallback structurel"
-            
-        valid_zone = "Fallback" not in zone_method
-        ret_total, ret_ann = backtest(df, zone_low, zone_high, hold_years)
         
-        # 📈 MÉTRIQUES
+        drop = ((zone_low - ath) / ath) * 100
+        
+        # 📊 MÉTRIQUES CLÉS
         st.markdown("<div class='key-metrics-row'>", unsafe_allow_html=True)
-        c1, c2, c3 = st.columns(3)
-        with c1: st.markdown(f"<div class='key-card'><div class='key-label'>💰 Prix Actuel</div><div class='key-value'>{current:.2f} {currency}</div><div class='key-delta delta-neg'>{((current-ath)/ath)*100:.1f}% vs ATH</div></div>", unsafe_allow_html=True)
-        with c2: st.markdown(f"<div class='key-card'><div class='key-label'>🎯 Zone d'achat parfaite</div><div class='key-value' style='color:#00ff00'>{zone_low:.2f} → {zone_high:.2f} {currency}</div><div class='key-delta delta-pos'>{((zone_low-ath)/ath)*100:.1f}% vs ATH</div></div>", unsafe_allow_html=True)
-        with c3: st.markdown(f"<div class='key-card'><div class='key-label'>🏢 Market Cap</div><div class='key-value'>{fund['market_cap']/1e9:.1f}B {currency}</div></div>", unsafe_allow_html=True)
+        c1, c2, c3, c4 = st.columns(4)
+        with c1: 
+            st.markdown(f"""
+            <div class='key-card'>
+                <div class='key-label'>💰 Prix Actuel</div>
+                <div class='key-value'>{current:.2f} {currency}</div>
+                <div class='key-delta delta-neg'>{((current-ath)/ath)*100:.1f}% vs ATH</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with c2: 
+            st.markdown(f"""
+            <div class='key-card'>
+                <div class='key-label'>🎯 Zone d'achat</div>
+                <div class='key-value'>{zone_low:.2f} → {zone_high:.2f}</div>
+                <div class='key-delta delta-pos'>{drop:.1f}% vs ATH</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with c3: 
+            st.markdown(f"""
+            <div class='key-card'>
+                <div class='key-label'>🏢 Market Cap</div>
+                <div class='key-value'>{fund['market_cap']/1e9:.1f}B {currency}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with c4: 
+            st.markdown(f"""
+            <div class='key-card'>
+                <div class='key-label'>⭐ Score Total</div>
+                <div class='key-value'>{total_score}/30</div>
+                <div class='key-delta'>Sur 5 critères</div>
+            </div>
+            """, unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
         
+        # 📊 SNOWFLAKE CHART + GRAPHIQUE PRIX
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            st.markdown("<div class='section-card'>", unsafe_allow_html=True)
+            st.markdown("<div class='section-title'>📊 Snowflake Analysis</div>", unsafe_allow_html=True)
+            st.plotly_chart(create_snowflake_chart(section_scores), use_container_width=True)
+            
+            st.markdown("<div class='metric-grid'>", unsafe_allow_html=True)
+            metrics = [
+                ('value', 'Value', '💎'),
+                ('growth', 'Growth', '📈'),
+                ('profitability', 'Profitability', '💰'),
+                ('health', 'Health', '💪'),
+                ('dividend', 'Dividend', '💵')
+            ]
+            for key, label, icon in metrics:
+                score = section_scores[key]
+                grade = 'A' if score >= 5 else 'B' if score >= 4 else 'C' if score >= 3 else 'D'
+                grade_class = 'score-a' if grade == 'A' else 'score-b' if grade == 'B' else 'score-c' if grade == 'C' else 'score-d'
+                st.markdown(f"""
+                <div class='metric-card {key}'>
+                    <div class='metric-label'>{icon} {label}</div>
+                    <div class='metric-value'>{score}/6</div>
+                    <div class='metric-score {grade_class}'>Note: {grade}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
+            st.plotly_chart(create_price_chart(df, zone_low, zone_high, currency), use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+        
         # 📋 FONDAMENTAUX
-        st.markdown("<h3 class='section-title'>📋 Données Fondamentales</h3>", unsafe_allow_html=True)
+        st.markdown("<div class='section-card'>", unsafe_allow_html=True)
+        st.markdown("<div class='section-title'>📋 Données Fondamentales</div>", unsafe_allow_html=True)
         st.markdown(f"""
         <div class='fundamental-grid'>
             <div class='fund-card'><div class='fund-label'>📈 PER</div><div class='fund-value'>{f"{fund['pe_ratio']:.1f}x" if fund['pe_ratio'] else "N/A"}</div></div>
@@ -349,42 +550,59 @@ if submit:
             <div class='fund-card'><div class='fund-label'>🏭 Secteur</div><div class='fund-value'>{fund['sector']}</div></div>
         </div>
         """, unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
         
         # 🛡️ RISQUE
         st.markdown(f"""
-        <div style='text-align:center; margin:1rem 0;'>
-            <span class='risk-badge {risk_class}'>🛡️ Risque: {risk_label} (Score: {risk_score}/100)</span>
+        <div class='section-card' style='text-align:center;'>
+            <span class='risk-badge {risk_class}' style='font-size:1rem; padding:0.5rem 1.5rem;'>
+                🛡️ Risque: {risk_label} (Score: {risk_score}/100)
+            </span>
         </div>
         """, unsafe_allow_html=True)
         
-        # 📊 GRAPHIQUE
-        st.plotly_chart(build_chart(df, zone_low, zone_high, currency, valid_zone, hold_years), use_container_width=True)
-        
-        # 💡 RAISON
-        st.markdown("<h3 class='section-title'>💡 Pourquoi cette zone ?</h3>", unsafe_allow_html=True)
-        if valid_zone:
-            st.markdown(f"<div class='alert-box alert-success'>✅ <b>Méthode :</b> {zone_method}. Analyse sur {hold_years} an(s). Accumulez entre {currency}{zone_low:.2f} et {currency}{zone_high:.2f}.</div>", unsafe_allow_html=True)
+        # 💡 RECOMMANDATION
+        st.markdown("<div class='section-card'>", unsafe_allow_html=True)
+        st.markdown("<div class='section-title'>💡 Recommandation</div>", unsafe_allow_html=True)
+        if drop < -20:
+            st.markdown(f"""
+            <div class='alert-box alert-success'>
+                ✅ <b>Opportunité d'achat</b> : L'action est {abs(drop):.1f}% en dessous de son ATH. 
+                La zone d'achat identifiée entre <b>{currency}{zone_low:.2f}</b> et <b>{currency}{zone_high:.2f}</b> 
+                représente un point d'entrée attractif avec un score de confluence élevé.
+            </div>
+            """, unsafe_allow_html=True)
         else:
-            st.markdown(f"<div class='alert-box alert-warning'>⚠️ <b>Note :</b> {zone_method}. La précision demandée dépasse les setups historiques disponibles. Zone structurelle affichée.</div>", unsafe_allow_html=True)
-            
+            st.markdown(f"""
+            <div class='alert-box alert-warning'>
+                ⚠️ <b>Attente recommandée</b> : L'action est proche de son ATH ({drop:.1f}%). 
+                Patientez pour une meilleure entrée ou utilisez un DCA.
+            </div>
+            """, unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+        
         # ⚙️ CONFIG
-        st.markdown("<h3 class='section-title'>⚙️ Configuration</h3>", unsafe_allow_html=True)
-        st.markdown(f"<div class='alert-box alert-info'>🎯 Précision: {precision_label} | 💱 Devise: {currency} | ⏳ Horizon: {hold_years} an(s) | 📊 Données: {len(df)} semaines | 📈 Max historique détecté: {max_hist_score}/100</div>", unsafe_allow_html=True)
-        
-        # 🔍 CONFLUENCE & BACKTEST
-        st.markdown("<h3 class='section-title'>🔍 Confluence & Performance</h3>", unsafe_allow_html=True)
-        ca, cb, cc, cd = st.columns(4, gap="small")
-        with ca: st.markdown(f"<div class='card'><div class='metric-label'>⭐ Score Moyen</div><div class='metric-value'>{score_zone((zone_low+zone_high)/2, fibs, rounds, demands, breakouts, ath)[0]:.0f}/100</div></div>", unsafe_allow_html=True)
-        with cb: st.markdown(f"<div class='card'><div class='metric-label'>🔢 Fibonacci</div><div class='metric-value' style='font-size:0.85rem;'>0.5: {fibs['0.500']:.2f}<br>0.618: {fibs['0.618']:.2f}</div></div>", unsafe_allow_html=True)
-        with cc: st.markdown(f"<div class='card'><div class='metric-label'>📥 Demande</div><div class='metric-value' style='font-size:0.85rem;'>{len(demands)} zone(s)</div></div>", unsafe_allow_html=True)
-        with cd: st.markdown(f"<div class='card'><div class='metric-label'>🚀 Breakout</div><div class='metric-value' style='font-size:0.85rem;'>{len(breakouts)} niveau(x)</div></div>", unsafe_allow_html=True)
-        
-        cx, cy = st.columns(2, gap="small")
-        with cx: st.markdown(f"<div class='card'><div class='metric-label'>📈 Rendement {hold_years} An(s)</div><div class='metric-value' style='color:#00ff00'>+{ret_total:.1f}%</div></div>", unsafe_allow_html=True)
-        with cy: st.markdown(f"<div class='card'><div class='metric-label'>💰 Annualisé</div><div class='metric-value' style='color:#00ff00'>+{ret_ann:.1f}% / an</div></div>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class='alert-box alert-info'>
+            <b>Configuration :</b> Précision {precision} (Seuil ≥{threshold}) | 
+            Horizon: {hold_years} an(s) | Données: {len(df)} semaines
+        </div>
+        """, unsafe_allow_html=True)
         
         st.caption("⚖️ BuyTheDip est un outil d'aide à la décision. Ne constitue pas un conseil financier.")
 else:
-    st.info("👈 Entrez une entreprise et appuyez sur **Entrée** ou cliquez sur **⚡ SCAN**")
+    st.markdown("""
+    <div style='text-align:center; padding:4rem 2rem; background:white; border-radius:16px; box-shadow:0 1px 3px rgba(0,0,0,0.1);'>
+        <div style='font-size:4rem; margin-bottom:1rem;'>📊</div>
+        <h2 style='color:#111827; margin-bottom:0.5rem;'>Analyse complète style Simply Wall St</h2>
+        <p style='color:#6b7280; margin-bottom:2rem;'>Entrez une entreprise ci-dessus pour obtenir :</p>
+        <div style='display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; max-width:800px; margin:0 auto;'>
+            <div style='background:#f9fafb; padding:1.5rem; border-radius:8px;'><div style='font-size:2rem; margin-bottom:0.5rem;'>📊</div><div style='font-weight:600;'>Snowflake Analysis</div></div>
+            <div style='background:#f9fafb; padding:1.5rem; border-radius:8px;'><div style='font-size:2rem; margin-bottom:0.5rem;'>💎</div><div style='font-weight:600;'>Value Score</div></div>
+            <div style='background:#f9fafb; padding:1.5rem; border-radius:8px;'><div style='font-size:2rem; margin-bottom:0.5rem;'>📈</div><div style='font-weight:600;'>Growth Score</div></div>
+            <div style='background:#f9fafb; padding:1.5rem; border-radius:8px;'><div style='font-size:2rem; margin-bottom:0.5rem;'>💰</div><div style='font-weight:600;'>Profitability</div></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-st.markdown("<div class='app-footer'>📈 BuyTheDip © 2024 | One Target. All Timeframes.</div></div>", unsafe_allow_html=True)
+st.markdown("<div class='app-footer'>📈 BuyTheDip © 2024 | Inspired by Simply Wall St</div></div>", unsafe_allow_html=True)
