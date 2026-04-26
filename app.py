@@ -140,19 +140,15 @@ def get_fundamentals(ticker):
 
 def calc_risk_score(fund, df):
     score = 0
-    # Volatilité (30 dernières semaines)
     if len(df) >= 30:
         vol = df['Close'].pct_change().tail(30).std() * np.sqrt(52)
         if vol < 0.2: score += 30
         elif vol < 0.4: score += 20
         elif vol < 0.6: score += 10
-    # Beta
     if fund['beta'] and fund['beta'] < 1.2: score += 25
     elif fund['beta'] and fund['beta'] < 1.5: score += 15
-    # Dette
     if fund['debt_to_equity'] and fund['debt_to_equity'] < 50: score += 25
     elif fund['debt_to_equity'] and fund['debt_to_equity'] < 100: score += 15
-    # Profitabilité
     if fund['profitable']: score += 20
     return min(score, 100)
 
@@ -213,12 +209,9 @@ def find_two_zones(df, fibs, rounds, demands, breakouts, ath):
         sc, reasons = score_zone(p, fibs, rounds, demands, breakouts, ath)
         if sc > 30:
             candidates.append({'price': p, 'score': sc, 'reasons': reasons})
-    
     if len(candidates) < 2:
         return ath * 0.75, ath * 0.65, "Fallback Fibonacci"
-    
     candidates.sort(key=lambda x: x['score'], reverse=True)
-    
     zone1 = candidates[0]['price']
     for c in candidates[1:]:
         if abs(c['price'] - zone1) / zone1 > 0.05:
@@ -226,19 +219,17 @@ def find_two_zones(df, fibs, rounds, demands, breakouts, ath):
             break
     else:
         zone2 = zone1 * 0.95
-    
-    if zone2 > zone1:
-        zone1, zone2 = zone2, zone1
-    
+    if zone2 > zone1: zone1, zone2 = zone2, zone1
     return zone1, zone2, "Confluence technique"
 
-def backtest(df, zone_low, zone_high):
-    periods = 3 * 52
+def backtest(df, zone_low, zone_high, years):
+    periods = int(years * 52)
     idx = np.argmin(np.abs(df['Close'].values - (zone_low + zone_high)/2))
     exit_idx = min(idx + periods, len(df)-1)
     entry = (zone_low + zone_high) / 2
     total = (df.iloc[exit_idx]['Close'] - entry) / entry * 100
-    return total, ((1 + total/100)**(1/3) - 1)*100
+    annual = ((1 + total/100)**(1/years) - 1)*100
+    return total, annual
 
 def build_chart(df, zone_low, zone_high, currency, valid_zone):
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.75, 0.25])
@@ -246,17 +237,14 @@ def build_chart(df, zone_low, zone_high, currency, valid_zone):
                                  increasing_line_color='#26a69a', decreasing_line_color='#ef5350'), row=1, col=1)
     colors = ['#26a69a' if c >= o else '#ef5350' for c, o in zip(df['Close'], df['Open'])]
     fig.add_trace(go.Bar(x=df.index, y=df['Volume'], marker_color=colors, opacity=0.6), row=2, col=1)
-    
     if valid_zone:
         fig.add_hrect(y0=zone_low, y1=zone_high, fillcolor="rgba(0, 255, 0, 0.15)", line_width=0,
                       annotation_text=f"🎯 ZONE: {currency}{zone_low:.2f} → {currency}{zone_high:.2f}",
                       annotation_position="top right", annotation_font=dict(color="#00ff00", size=10))
         fig.add_hline(y=zone_low, line_width=2, line_color="#00ff00", line_dash="dot", opacity=0.7)
         fig.add_hline(y=zone_high, line_width=2, line_color="#00ff00", line_dash="dot", opacity=0.7)
-    
     fig.add_hline(y=df['High'].max(), line_dash="dash", line_color="#ef5350", line_width=1, opacity=0.6)
     fig.add_hline(y=df.iloc[-1]['Close'], line_dash="dot", line_color="#60a5fa", line_width=1, opacity=0.6)
-    
     fig.update_layout(height=580, template='plotly_dark', plot_bgcolor='#131722', paper_bgcolor='#131722',
                       font=dict(color='#d1d4dc', family="Inter", size=11), xaxis_rangeslider_visible=False, 
                       showlegend=False, hovermode='x unified', margin=dict(l=10, r=10, t=20, b=10))
@@ -280,9 +268,10 @@ with st.form(key="scan_form", clear_on_submit=False):
         st.markdown("<br>", unsafe_allow_html=True)
         submit = st.form_submit_button("⚡ SCAN", use_container_width=True)
     
-    cols = st.columns(2, gap="medium")
+    cols = st.columns(3, gap="medium")
     with cols[0]: currency = st.selectbox("💱 Devise", ["$", "€", "£"], index=0, key="currency")
     with cols[1]: min_score = st.slider("🎯 Score min", 0, 100, 50, key="min_score")
+    with cols[2]: hold_years = st.selectbox("⏳ Horizon", [1, 3, 5, 10], index=1, key="hold_years")
     st.markdown("</div>", unsafe_allow_html=True)
 
 if submit:
@@ -299,7 +288,6 @@ if submit:
         ath = df['High'].max()
         atl = df['Low'].min()
         
-        # 📊 FONDAMENTAUX + RISQUE
         fund = get_fundamentals(ticker)
         risk_score = calc_risk_score(fund, df)
         risk_label, risk_class = get_risk_label(risk_score)
@@ -309,11 +297,10 @@ if submit:
         demands = detect_demand(df)
         breakouts = detect_breakouts(df)
         
-        # 🎯 DEUX ZONES D'ACHAT
         zone_high, zone_low, zone_method = find_two_zones(df, fibs, rounds, demands, breakouts, ath)
         valid_zone = True
         
-        ret_3y, ret_ann = backtest(df, zone_low, zone_high)
+        ret_total, ret_ann = backtest(df, zone_low, zone_high, hold_years)
         
         # 📈 MÉTRIQUES CLÉS
         st.markdown("<div class='key-metrics-row'>", unsafe_allow_html=True)
@@ -323,7 +310,7 @@ if submit:
         with c3: st.markdown(f"<div class='key-card'><div class='key-label'>🏢 Market Cap</div><div class='key-value'>{fund['market_cap']/1e9:.1f}B {currency}</div></div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
         
-        # 📊 FONDAMENTAUX EN GRILLE (CORRIGÉ)
+        # 📊 FONDAMENTAUX
         st.markdown("<h3 class='section-title'>📋 Données Fondamentales</h3>", unsafe_allow_html=True)
         st.markdown(f"""
         <div class='fundamental-grid'>
@@ -346,25 +333,25 @@ if submit:
         </div>
         """, unsafe_allow_html=True)
         
-        # 🛡️ ÉVALUATION DU RISQUE
+        # 🛡️ RISQUE
         st.markdown(f"""
         <div style='text-align:center; margin:1rem 0;'>
             <span class='risk-badge {risk_class}'>🛡️ Risque: {risk_label} (Score: {risk_score}/100)</span>
         </div>
         """, unsafe_allow_html=True)
         
-        # 📊 GRAPHIQUE AVEC BANDE VERTE
+        # 📊 GRAPHIQUE
         st.plotly_chart(build_chart(df, zone_low, zone_high, currency, valid_zone), use_container_width=True)
         
-        # 💡 RAISON PRINCIPALE
+        # 💡 RAISON
         st.markdown("<h3 class='section-title'>💡 Pourquoi cette zone ?</h3>", unsafe_allow_html=True)
-        st.markdown(f"<div class='alert-box alert-success'>✅ <b>Méthode :</b> {zone_method}. La bande verte encadre la zone d'accumulation optimale. Accumulez progressivement entre {currency}{zone_low:.2f} et {currency}{zone_high:.2f}.</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='alert-box alert-success'>✅ <b>Méthode :</b> {zone_method}. Accumulez progressivement entre {currency}{zone_low:.2f} et {currency}{zone_high:.2f}.</div>", unsafe_allow_html=True)
         
-        # ⚙️ CONFIGURATION
+        # ⚙️ CONFIG
         st.markdown("<h3 class='section-title'>⚙️ Configuration</h3>", unsafe_allow_html=True)
-        st.markdown(f"<div class='alert-box alert-info'>🎯 Score min: {min_score}/100 | 💱 Devise: {currency}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='alert-box alert-info'>🎯 Score min: {min_score}/100 | 💱 Devise: {currency} | ⏳ Horizon: {hold_years} an(s)</div>", unsafe_allow_html=True)
         
-        # 🔍 DÉTAILS TECHNIQUES + BACKTEST
+        # 🔍 CONFLUENCE & BACKTEST DYNAMIQUE
         st.markdown("<h3 class='section-title'>🔍 Confluence & Performance</h3>", unsafe_allow_html=True)
         ca, cb, cc, cd = st.columns(4, gap="small")
         with ca: st.markdown(f"<div class='card'><div class='metric-label'>⭐ Score Zone</div><div class='metric-value'>{score_zone((zone_low+zone_high)/2, fibs, rounds, demands, breakouts, ath)[0]:.0f}/100</div></div>", unsafe_allow_html=True)
@@ -373,7 +360,7 @@ if submit:
         with cd: st.markdown(f"<div class='card'><div class='metric-label'>🚀 Breakout</div><div class='metric-value' style='font-size:0.85rem;'>{len(breakouts)} niveau(x)</div></div>", unsafe_allow_html=True)
         
         cx, cy = st.columns(2, gap="small")
-        with cx: st.markdown(f"<div class='card'><div class='metric-label'>📈 Rendement 3 Ans</div><div class='metric-value' style='color:#00ff00'>+{ret_3y:.1f}%</div></div>", unsafe_allow_html=True)
+        with cx: st.markdown(f"<div class='card'><div class='metric-label'>📈 Rendement {hold_years} An(s)</div><div class='metric-value' style='color:#00ff00'>+{ret_total:.1f}%</div></div>", unsafe_allow_html=True)
         with cy: st.markdown(f"<div class='card'><div class='metric-label'>💰 Annualisé</div><div class='metric-value' style='color:#00ff00'>+{ret_ann:.1f}% / an</div></div>", unsafe_allow_html=True)
         
         st.caption("⚖️ BuyTheDip est un outil d'aide à la décision. Ne constitue pas un conseil financier.")
