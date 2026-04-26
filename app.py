@@ -6,12 +6,11 @@ import requests
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import warnings
-import streamlit.components.v1 as components
 
 warnings.filterwarnings('ignore')
 st.set_page_config(page_title="BuyTheDip | Smart Entry Points", layout="centered", page_icon="📈")
 
-# 🎨 CSS PREMIUM (Fond noir uniforme, Logo, Animations)
+# 🎨 CSS PREMIUM
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -31,14 +30,18 @@ st.markdown("""
     .brand-subtitle { color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.3rem; }
     @keyframes gradText { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
     
-    .control-panel { background: transparent; border: none; padding: 1.5rem 0; margin-bottom: 1.5rem; }
+    /* FORM STYLING */
+    .stForm { background: transparent; border: none; }
+    .stForm > div { background: transparent !important; }
+    
+    .control-panel { padding: 1rem 0 1.5rem; }
     .control-panel label { color: var(--text-secondary) !important; font-size: 0.75rem !important; font-weight: 600 !important; margin-bottom: 0.4rem !important; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
     .control-panel input, .control-panel select { background: var(--bg-card) !important; border: 1px solid var(--border) !important; color: white !important; border-radius: 10px !important; padding: 0.6rem 0.8rem !important; width: 100% !important; transition: all 0.2s; }
     .control-panel input:focus, .control-panel select:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 2px rgba(20,184,166,0.2); outline: none; }
     .control-panel .stSlider > div > div > div > div { background: var(--accent) !important; }
     
     /* BOUTON SCAN ANIMÉ */
-    div[data-testid="stButton"] > button {
+    .stFormSubmitButton button {
         background: var(--accent-grad) !important; background-size: 200% 200% !important;
         animation: btnPulse 3s ease infinite !important;
         color: white !important; border: none !important; border-radius: 12px !important;
@@ -47,8 +50,8 @@ st.markdown("""
         box-shadow: 0 0 25px rgba(20,184,166,0.35) !important;
         transition: all 0.3s cubic-bezier(0.4,0,0.2,1) !important; position: relative; overflow: hidden;
     }
-    div[data-testid="stButton"] > button:hover { transform: translateY(-3px) scale(1.02) !important; box-shadow: 0 0 40px rgba(20,184,166,0.6) !important; }
-    div[data-testid="stButton"] > button::after {
+    .stFormSubmitButton button:hover { transform: translateY(-3px) scale(1.02) !important; box-shadow: 0 0 40px rgba(20,184,166,0.6) !important; }
+    .stFormSubmitButton button::after {
         content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
         background: linear-gradient(transparent, rgba(255,255,255,0.15), transparent);
         transform: rotate(45deg); animation: shine 2.5s infinite;
@@ -77,13 +80,10 @@ st.markdown("""
     .alert-success { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); color: #34d399; }
     .alert-danger { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #f87171; }
     .app-footer { text-align: center; margin-top: 2.5rem; padding: 1rem; color: var(--text-secondary); font-size: 0.75rem; border-top: 1px solid var(--border); }
-    
-    /* ENTER KEY HINT */
-    .enter-hint { text-align: center; color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.5rem; opacity: 0.7; }
 </style>
 """, unsafe_allow_html=True)
 
-# 🖼️ LOGO SVG (Flèche ascendante pro)
+# 🖼️ LOGO SVG
 LOGO_SVG = """
 <svg class="brand-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -199,43 +199,25 @@ def build_chart(df, z_mid, currency, valid_zone):
 
 # 🖥️ INTERFACE
 st.markdown("<div class='app-wrapper'>", unsafe_allow_html=True)
-
-# LOGO + TITRE
 st.markdown(LOGO_SVG, unsafe_allow_html=True)
 st.markdown("<div class='brand-header'><h1 class='brand-title'>BuyTheDip</h1><p class='brand-subtitle'>Points d'entrée institutionnels. Zéro bruit.</p></div>", unsafe_allow_html=True)
 
-# PANEL DE CONTRÔLE (SANS FOND VERT)
-with st.container():
+# 🎯 FORMULAIRE AVEC SUPPORT NATIF ENTER
+with st.form(key="scan_form", clear_on_submit=False):
     st.markdown("<div class='control-panel'>", unsafe_allow_html=True)
     c1, c2 = st.columns([2.5, 1], gap="medium")
-    with c1: company = st.text_input("🏢 Entreprise", value="Apple", key="company", help="Appuyez sur Entrée pour scanner")
+    with c1: 
+        company = st.text_input("🏢 Entreprise", value="Apple", key="company", placeholder="Ex: Apple, Tesla, Nvidia...")
     with c2: 
         st.markdown("<br>", unsafe_allow_html=True)
-        analyze = st.button("⚡ SCAN", type="primary", use_container_width=True, key="analyze")
+        submit = st.form_submit_button("⚡ SCAN", use_container_width=True)
     
-    st.markdown("<div class='enter-hint'>⌨️ Appuyez sur Entrée pour lancer le scan</div>", unsafe_allow_html=True)
-        
     cols = st.columns(2, gap="medium")
     with cols[0]: currency = st.selectbox("💱 Devise", ["$", "€", "£"], index=0, key="currency")
     with cols[1]: max_drop = st.slider("📉 Max Drawdown (%)", 50, 90, 81, key="max_drop")
     st.markdown("</div>", unsafe_allow_html=True)
 
-# Script pour activer Enter key
-components.html("""
-<script>
-const input = document.querySelector('input[data-testid="stTextInput"]');
-if (input) {
-    input.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            const btn = document.querySelector('button[kind="primary"]');
-            if (btn) btn.click();
-        }
-    });
-}
-</script>
-""", height=0, width=0)
-
-if analyze:
+if submit:
     with st.spinner("⚙️ Scan des confluences..."):
         ticker, full_name = resolve_ticker(company)
         if not ticker:
@@ -300,6 +282,6 @@ if analyze:
             
         st.caption("⚖️ BuyTheDip est un outil d'aide à la décision. Ne constitue pas un conseil financier.")
 else:
-    st.info("👈 Entrez une entreprise et cliquez sur **⚡ SCAN** ou appuyez sur Entrée")
+    st.info("👈 Entrez une entreprise et appuyez sur **Entrée** ou cliquez sur **⚡ SCAN**")
 
 st.markdown("<div class='app-footer'>📈 BuyTheDip © 2024 | One Target. All Timeframes.</div></div>", unsafe_allow_html=True)
