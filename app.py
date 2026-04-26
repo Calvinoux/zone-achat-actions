@@ -19,11 +19,12 @@ st.markdown("""
         --text-primary: #e2e8f0; --text-secondary: #94a3b8;
         --accent: #14b8a6; --accent-grad: linear-gradient(135deg, #0ea5e9, #14b8a6, #0ea5e9);
         --tv-green: #26a69a; --tv-red: #ef5350; --tv-bg: #131722; --tv-grid: #2a2e39;
+        --risk-low: #10b981; --risk-med: #f59e0b; --risk-high: #ef4444;
     }
     .main { background-color: var(--bg-main); color: var(--text-primary); font-family: 'Inter', system-ui, sans-serif; }
     header, footer, [data-testid="stDecoration"], .stDeployButton { display: none !important; }
     
-    .app-wrapper { max-width: 960px; margin: 0 auto; padding: 2rem 1rem; }
+    .app-wrapper { max-width: 1000px; margin: 0 auto; padding: 2rem 1rem; }
     .brand-header { text-align: center; margin-bottom: 1.5rem; }
     .brand-logo { width: 80px; height: 80px; margin: 0 auto 1rem; display: block; }
     .brand-title { font-size: 2.4rem; font-weight: 800; background: var(--accent-grad); background-size: 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: gradText 4s ease infinite; letter-spacing: -0.5px; margin: 0; }
@@ -58,12 +59,21 @@ st.markdown("""
     @keyframes shine { 0%{left:-50%} 100%{left:150%} }
     
     .key-metrics-row { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; justify-content: center; }
-    .key-card { flex: 1; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 1.2rem; text-align: center; transition: all 0.2s; }
+    .key-card { flex: 1; min-width: 180px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 1rem; text-align: center; transition: all 0.2s; }
     .key-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-    .key-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 0.5rem; }
-    .key-value { font-size: 1.6rem; font-weight: 800; color: var(--text-primary); }
-    .key-delta { font-size: 0.85rem; margin-top: 0.3rem; font-weight: 600; }
+    .key-label { font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 0.4rem; }
+    .key-value { font-size: 1.4rem; font-weight: 700; color: var(--text-primary); }
+    .key-delta { font-size: 0.8rem; margin-top: 0.2rem; font-weight: 600; }
     .delta-pos { color: #00ff00; } .delta-neg { color: var(--tv-red); }
+    
+    .fundamental-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.8rem; margin: 1rem 0; }
+    .fund-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 0.9rem; text-align: center; }
+    .fund-label { font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem; }
+    .fund-value { font-size: 1.1rem; font-weight: 600; color: var(--text-primary); }
+    .risk-badge { display: inline-block; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+    .risk-low { background: rgba(16,185,129,0.15); color: var(--risk-low); border: 1px solid var(--risk-low); }
+    .risk-med { background: rgba(245,158,11,0.15); color: var(--risk-med); border: 1px solid var(--risk-med); }
+    .risk-high { background: rgba(239,68,68,0.15); color: var(--risk-high); border: 1px solid var(--risk-high); }
     
     .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 1rem; text-align: center; transition: transform 0.2s, border-color 0.2s; }
     .card:hover { border-color: var(--accent); transform: translateY(-2px); }
@@ -110,14 +120,46 @@ def resolve_ticker(name):
 def fetch_data(ticker):
     return yf.Ticker(ticker).history(interval="1wk", period="10y").dropna(subset=['Close', 'Volume', 'High', 'Low'])
 
-def get_market_cap(ticker):
+def get_fundamentals(ticker):
     try:
-        mc = yf.Ticker(ticker).fast_info.get('marketCap') or yf.Ticker(ticker).info.get('marketCap', 0)
-        if mc >= 1e12: return f"${mc/1e12:.2f}T"
-        elif mc >= 1e9: return f"${mc/1e9:.2f}B"
-        elif mc >= 1e6: return f"${mc/1e6:.2f}M"
-        return f"${mc:,.0f}"
-    except: return "N/A"
+        info = yf.Ticker(ticker).info
+        return {
+            'pe_ratio': info.get('trailingPE') or info.get('forwardPE'),
+            'profitable': info.get('profitMargins', 0) > 0,
+            'free_cashflow': info.get('freeCashflow'),
+            'total_cash': info.get('totalCash'),
+            'sector': info.get('sector', 'N/A'),
+            'industry': info.get('industry', 'N/A'),
+            'beta': info.get('beta', 1.0),
+            'debt_to_equity': info.get('debtToEquity'),
+            'market_cap': info.get('marketCap', 0)
+        }
+    except:
+        return {'pe_ratio': None, 'profitable': None, 'free_cashflow': None, 'total_cash': None, 
+                'sector': 'N/A', 'industry': 'N/A', 'beta': None, 'debt_to_equity': None, 'market_cap': 0}
+
+def calc_risk_score(fund, df):
+    score = 0
+    # Volatilité (30 dernières semaines)
+    if len(df) >= 30:
+        vol = df['Close'].pct_change().tail(30).std() * np.sqrt(52)
+        if vol < 0.2: score += 30
+        elif vol < 0.4: score += 20
+        elif vol < 0.6: score += 10
+    # Beta
+    if fund['beta'] and fund['beta'] < 1.2: score += 25
+    elif fund['beta'] and fund['beta'] < 1.5: score += 15
+    # Dette
+    if fund['debt_to_equity'] and fund['debt_to_equity'] < 50: score += 25
+    elif fund['debt_to_equity'] and fund['debt_to_equity'] < 100: score += 15
+    # Profitabilité
+    if fund['profitable']: score += 20
+    return min(score, 100)
+
+def get_risk_label(score):
+    if score >= 70: return "Faible", "risk-low"
+    elif score >= 40: return "Modéré", "risk-med"
+    else: return "Élevé", "risk-high"
 
 def calc_fib(high, low):
     diff = high - low
@@ -154,25 +196,55 @@ def score_zone(price, fibs, rounds, demands, breakouts, ath):
     reasons = []
     s = 0
     fib_dev = min([abs(price-f)/f for f in [fibs['0.500'], fibs['0.618']]])
-    if fib_dev < 0.04: s += 40 * max(0, 1 - fib_dev * 5); reasons.append("Fibonacci 0.5/0.618")
+    if fib_dev < 0.04: s += 40 * max(0, 1 - fib_dev * 5); reasons.append("Fibonacci")
     round_dev = min([abs(price-r)/r for r in rounds])
-    if round_dev < 0.02: s += 20 * max(0, 1 - round_dev * 10); reasons.append("Niveau Psychologique")
+    if round_dev < 0.02: s += 20 * max(0, 1 - round_dev * 10); reasons.append("Niveau Rond")
     if len(demands) > 0:
         dem_dev = min([abs(price-d)/d for d in demands])
-        if dem_dev < 0.04: s += 25 * max(0, 1 - dem_dev * 4); reasons.append("Zone de Demande")
+        if dem_dev < 0.04: s += 25 * max(0, 1 - dem_dev * 4); reasons.append("Demande")
     if len(breakouts) > 0:
         brk_dev = min([abs(price-b)/b for b in breakouts])
-        if brk_dev < 0.03: s += 15 * max(0, 1 - brk_dev * 5); reasons.append("Breakout Retest")
+        if brk_dev < 0.03: s += 15 * max(0, 1 - brk_dev * 5); reasons.append("Breakout")
     return min(s, 100), reasons
 
-def backtest(df, zone):
+def find_two_zones(df, fibs, rounds, demands, breakouts, ath):
+    candidates = []
+    for p in df['Close']:
+        sc, reasons = score_zone(p, fibs, rounds, demands, breakouts, ath)
+        if sc > 30:  # Seuil minimal pour être candidat
+            candidates.append({'price': p, 'score': sc, 'reasons': reasons})
+    
+    if len(candidates) < 2:
+        # Fallback : deux niveaux Fibonacci
+        return ath * 0.75, ath * 0.65, "Fallback Fibonacci"
+    
+    # Trier par score décroissant
+    candidates.sort(key=lambda x: x['score'], reverse=True)
+    
+    # Prendre les 2 meilleurs prix DISTINCTS (écartés d'au moins 5%)
+    zone1 = candidates[0]['price']
+    for c in candidates[1:]:
+        if abs(c['price'] - zone1) / zone1 > 0.05:
+            zone2 = c['price']
+            break
+    else:
+        zone2 = zone1 * 0.95  # Fallback
+    
+    # Ordonner : zone1 > zone2 (zone1 = plus haute, zone2 = plus basse)
+    if zone2 > zone1:
+        zone1, zone2 = zone2, zone1
+    
+    return zone1, zone2, "Confluence technique"
+
+def backtest(df, zone_low, zone_high):
     periods = 3 * 52
-    idx = np.argmin(np.abs(df['Close'].values - zone))
+    idx = np.argmin(np.abs(df['Close'].values - (zone_low + zone_high)/2))
     exit_idx = min(idx + periods, len(df)-1)
-    total = (df.iloc[exit_idx]['Close'] - df.iloc[idx]['Close']) / df.iloc[idx]['Close'] * 100
+    entry = (zone_low + zone_high) / 2
+    total = (df.iloc[exit_idx]['Close'] - entry) / entry * 100
     return total, ((1 + total/100)**(1/3) - 1)*100
 
-def build_chart(df, z_mid, currency, valid_zone):
+def build_chart(df, zone_low, zone_high, currency, valid_zone):
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.75, 0.25])
     fig.add_trace(go.Candlestick(x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
                                  increasing_line_color='#26a69a', decreasing_line_color='#ef5350'), row=1, col=1)
@@ -180,9 +252,13 @@ def build_chart(df, z_mid, currency, valid_zone):
     fig.add_trace(go.Bar(x=df.index, y=df['Volume'], marker_color=colors, opacity=0.6), row=2, col=1)
     
     if valid_zone:
-        fig.add_hline(y=z_mid, line_width=3, line_color="#00ff00", line_dash="solid", 
-                      annotation_text=f"🎯 ZONE: {currency}{z_mid:.2f}", annotation_position="right",
-                      annotation_font=dict(color="#00ff00", size=11, family="Inter"))
+        # 🟢 BANDE VERTE ENTRE LES DEUX ZONES
+        fig.add_hrect(y0=zone_low, y1=zone_high, fillcolor="rgba(0, 255, 0, 0.15)", line_width=0,
+                      annotation_text=f"🎯 ZONE: {currency}{zone_low:.2f} → {currency}{zone_high:.2f}",
+                      annotation_position="top right", annotation_font=dict(color="#00ff00", size=10))
+        fig.add_hline(y=zone_low, line_width=2, line_color="#00ff00", line_dash="dot", opacity=0.7)
+        fig.add_hline(y=zone_high, line_width=2, line_color="#00ff00", line_dash="dot", opacity=0.7)
+    
     fig.add_hline(y=df['High'].max(), line_dash="dash", line_color="#ef5350", line_width=1, opacity=0.6)
     fig.add_hline(y=df.iloc[-1]['Close'], line_dash="dot", line_color="#60a5fa", line_width=1, opacity=0.6)
     
@@ -227,60 +303,84 @@ if submit:
         current = df.iloc[-1]['Close']
         ath = df['High'].max()
         atl = df['Low'].min()
-        market_cap = get_market_cap(ticker)
+        
+        # 📊 FONDAMENTAUX + RISQUE
+        fund = get_fundamentals(ticker)
+        risk_score = calc_risk_score(fund, df)
+        risk_label, risk_class = get_risk_label(risk_score)
         
         fibs = calc_fib(ath, atl)
         rounds = find_rounds(current)
         demands = detect_demand(df)
         breakouts = detect_breakouts(df)
         
-        best_price, best_score, best_reasons = 0, 0, []
-        for p in df['Close']:
-            sc, reasons = score_zone(p, fibs, rounds, demands, breakouts, ath)
-            if sc > best_score: best_price, best_score, best_reasons = p, sc, reasons
-            
-        if best_score == 0:
-            best_price = current
-            
-        valid_zone = best_score >= min_score
-        drop = ((best_price - ath) / ath) * 100
-        ret_3y, ret_ann = backtest(df, best_price)
+        # 🎯 DEUX ZONES D'ACHAT
+        zone_high, zone_low, zone_method = find_two_zones(df, fibs, rounds, demands, breakouts, ath)
+        valid_zone = True  # Toujours afficher les zones, l'utilisateur juge avec le score
         
-        # MÉTRIQUES CLÉS
+        ret_3y, ret_ann = backtest(df, zone_low, zone_high)
+        
+        # 📈 MÉTRIQUES CLÉS
         st.markdown("<div class='key-metrics-row'>", unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
         with c1: st.markdown(f"<div class='key-card'><div class='key-label'>💰 Prix Actuel</div><div class='key-value'>{current:.2f} {currency}</div><div class='key-delta delta-neg'>{((current-ath)/ath)*100:.1f}% vs ATH</div></div>", unsafe_allow_html=True)
-        with c2: st.markdown(f"<div class='key-card'><div class='key-label'>🎯 Zone d'achat parfaite</div><div class='key-value' style='color:#00ff00'>{best_price:.2f} {currency}</div><div class='key-delta delta-pos'>{drop:.1f}% vs ATH</div></div>", unsafe_allow_html=True)
-        with c3: st.markdown(f"<div class='key-card'><div class='key-label'>🏢 Market Cap</div><div class='key-value'>{market_cap}</div></div>", unsafe_allow_html=True)
+        with c2: st.markdown(f"<div class='key-card'><div class='key-label'>🎯 Zone d'achat parfaite</div><div class='key-value' style='color:#00ff00'>{zone_low:.2f} → {zone_high:.2f} {currency}</div><div class='key-delta delta-pos'>{((zone_low-ath)/ath)*100:.1f}% vs ATH</div></div>", unsafe_allow_html=True)
+        with c3: st.markdown(f"<div class='key-card'><div class='key-label'>🏢 Market Cap</div><div class='key-value'>{fund['market_cap']/1e9:.1f}B {currency}</div></div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
         
-        # GRAPHIQUE
-        st.plotly_chart(build_chart(df, best_price, currency, valid_zone), use_container_width=True)
+        # 📊 FONDAMENTAUX EN GRILLE
+        st.markdown("<h3 class='section-title'>📋 Données Fondamentales</h3>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class='fundamental-grid'>
+            <div class='fund-card'>
+                <div class='fund-label'>📈 PER</div>
+                <div class='fund-value'>{fund['pe_ratio']:.1f}x' if fund['pe_ratio'] else 'N/A'}</div>
+            </div>
+            <div class='fund-card'>
+                <div class='fund-label'>💰 Rentable</div>
+                <div class='fund-value' style='color:{"#10b981" if fund["profitable"] else "#ef4444"}'>{"✅ Oui" if fund["profitable"] else "❌ Non"}</div>
+            </div>
+            <div class='fund-card'>
+                <div class='fund-label'>💵 Cash Flow</div>
+                <div class='fund-value'>{fund['free_cashflow']/1e9:.1f}B' if fund['free_cashflow'] else 'N/A'}</div>
+            </div>
+            <div class='fund-card'>
+                <div class='fund-label'>🏭 Secteur</div>
+                <div class='fund-value'>{fund['sector']}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # RAISON PRINCIPALE
-        st.markdown("<h3 class='section-title'>💡 Pourquoi entrer à ce prix ?</h3>", unsafe_allow_html=True)
-        if valid_zone:
-            main_reason = best_reasons[0] if best_reasons else "Alignement technique optimal sur support majeur"
-            st.markdown(f"<div class='alert-box alert-success'>✅ <b>Raison principale :</b> Le prix converge avec <u>{main_reason}</u>. Score {best_score:.0f}/100 ≥ {min_score}.</div>", unsafe_allow_html=True)
-        else:
-            st.markdown(f"<div class='alert-box alert-danger'>🛑 <b>Zone non validée :</b> Score {best_score:.0f}/100 < {min_score}. Confluence insuffisante.</div>", unsafe_allow_html=True)
-            
-        # CONFIGURATION APPLIQUÉE
+        # 🛡️ ÉVALUATION DU RISQUE
+        st.markdown(f"""
+        <div style='text-align:center; margin:1rem 0;'>
+            <span class='risk-badge {risk_class}'>🛡️ Risque: {risk_label} (Score: {risk_score}/100)</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # 📊 GRAPHIQUE AVEC BANDE VERTE
+        st.plotly_chart(build_chart(df, zone_low, zone_high, currency, valid_zone), use_container_width=True)
+        
+        # 💡 RAISON PRINCIPALE
+        st.markdown("<h3 class='section-title'>💡 Pourquoi cette zone ?</h3>", unsafe_allow_html=True)
+        st.markdown(f"<div class='alert-box alert-success'>✅ <b>Méthode :</b> {zone_method}. La bande verte encadre la zone d'accumulation optimale. Accumulez progressivement entre {currency}{zone_low:.2f} et {currency}{zone_high:.2f}.</div>", unsafe_allow_html=True)
+        
+        # ⚙️ CONFIGURATION
         st.markdown("<h3 class='section-title'>⚙️ Configuration</h3>", unsafe_allow_html=True)
-        st.markdown(f"<div class='alert-box alert-info'>🎯 <b>Score min requis :</b> {min_score}/100 | 💱 <b>Devise :</b> {currency}</div>", unsafe_allow_html=True)
-            
-        # DÉTAILS TECHNIQUES
-        st.markdown("<h3 class='section-title'>🔍 Confluence & Backtest</h3>", unsafe_allow_html=True)
+        st.markdown(f"<div class='alert-box alert-info'>🎯 Score min: {min_score}/100 | 💱 Devise: {currency}</div>", unsafe_allow_html=True)
+        
+        # 🔍 DÉTAILS TECHNIQUES + BACKTEST
+        st.markdown("<h3 class='section-title'>🔍 Confluence & Performance</h3>", unsafe_allow_html=True)
         ca, cb, cc, cd = st.columns(4, gap="small")
-        with ca: st.markdown(f"<div class='card'><div class='metric-label'>⭐ Score</div><div class='metric-value'>{best_score:.0f}/100</div></div>", unsafe_allow_html=True)
+        with ca: st.markdown(f"<div class='card'><div class='metric-label'>⭐ Score Zone</div><div class='metric-value'>{score_zone((zone_low+zone_high)/2, fibs, rounds, demands, breakouts, ath)[0]:.0f}/100</div></div>", unsafe_allow_html=True)
         with cb: st.markdown(f"<div class='card'><div class='metric-label'>🔢 Fibonacci</div><div class='metric-value' style='font-size:0.85rem;'>0.5: {fibs['0.500']:.2f}<br>0.618: {fibs['0.618']:.2f}</div></div>", unsafe_allow_html=True)
-        with cc: st.markdown(f"<div class='card'><div class='metric-label'>📥 Demande</div><div class='metric-value' style='font-size:0.85rem;'>{', '.join([currency+str(round(d,1)) for d in demands[:2]]) if len(demands)>0 else 'Aucune'}</div></div>", unsafe_allow_html=True)
-        with cd: st.markdown(f"<div class='card'><div class='metric-label'>🚀 Breakout</div><div class='metric-value' style='font-size:0.85rem;'>{', '.join([currency+str(round(b,1)) for b in breakouts[:2]]) if len(breakouts)>0 else 'Aucun'}</div></div>", unsafe_allow_html=True)
+        with cc: st.markdown(f"<div class='card'><div class='metric-label'>📥 Demande</div><div class='metric-value' style='font-size:0.85rem;'>{len(demands)} zone(s)</div></div>", unsafe_allow_html=True)
+        with cd: st.markdown(f"<div class='card'><div class='metric-label'>🚀 Breakout</div><div class='metric-value' style='font-size:0.85rem;'>{len(breakouts)} niveau(x)</div></div>", unsafe_allow_html=True)
         
         cx, cy = st.columns(2, gap="small")
         with cx: st.markdown(f"<div class='card'><div class='metric-label'>📈 Rendement 3 Ans</div><div class='metric-value' style='color:#00ff00'>+{ret_3y:.1f}%</div></div>", unsafe_allow_html=True)
         with cy: st.markdown(f"<div class='card'><div class='metric-label'>💰 Annualisé</div><div class='metric-value' style='color:#00ff00'>+{ret_ann:.1f}% / an</div></div>", unsafe_allow_html=True)
-            
+        
         st.caption("⚖️ BuyTheDip est un outil d'aide à la décision. Ne constitue pas un conseil financier.")
 else:
     st.info("👈 Entrez une entreprise et appuyez sur **Entrée** ou cliquez sur **⚡ SCAN**")
