@@ -211,26 +211,22 @@ def find_two_zones(df, fibs, rounds, demands, breakouts, ath):
     candidates = []
     for p in df['Close']:
         sc, reasons = score_zone(p, fibs, rounds, demands, breakouts, ath)
-        if sc > 30:  # Seuil minimal pour être candidat
+        if sc > 30:
             candidates.append({'price': p, 'score': sc, 'reasons': reasons})
     
     if len(candidates) < 2:
-        # Fallback : deux niveaux Fibonacci
         return ath * 0.75, ath * 0.65, "Fallback Fibonacci"
     
-    # Trier par score décroissant
     candidates.sort(key=lambda x: x['score'], reverse=True)
     
-    # Prendre les 2 meilleurs prix DISTINCTS (écartés d'au moins 5%)
     zone1 = candidates[0]['price']
     for c in candidates[1:]:
         if abs(c['price'] - zone1) / zone1 > 0.05:
             zone2 = c['price']
             break
     else:
-        zone2 = zone1 * 0.95  # Fallback
+        zone2 = zone1 * 0.95
     
-    # Ordonner : zone1 > zone2 (zone1 = plus haute, zone2 = plus basse)
     if zone2 > zone1:
         zone1, zone2 = zone2, zone1
     
@@ -252,7 +248,6 @@ def build_chart(df, zone_low, zone_high, currency, valid_zone):
     fig.add_trace(go.Bar(x=df.index, y=df['Volume'], marker_color=colors, opacity=0.6), row=2, col=1)
     
     if valid_zone:
-        # 🟢 BANDE VERTE ENTRE LES DEUX ZONES
         fig.add_hrect(y0=zone_low, y1=zone_high, fillcolor="rgba(0, 255, 0, 0.15)", line_width=0,
                       annotation_text=f"🎯 ZONE: {currency}{zone_low:.2f} → {currency}{zone_high:.2f}",
                       annotation_position="top right", annotation_font=dict(color="#00ff00", size=10))
@@ -316,7 +311,7 @@ if submit:
         
         # 🎯 DEUX ZONES D'ACHAT
         zone_high, zone_low, zone_method = find_two_zones(df, fibs, rounds, demands, breakouts, ath)
-        valid_zone = True  # Toujours afficher les zones, l'utilisateur juge avec le score
+        valid_zone = True
         
         ret_3y, ret_ann = backtest(df, zone_low, zone_high)
         
@@ -328,13 +323,13 @@ if submit:
         with c3: st.markdown(f"<div class='key-card'><div class='key-label'>🏢 Market Cap</div><div class='key-value'>{fund['market_cap']/1e9:.1f}B {currency}</div></div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
         
-        # 📊 FONDAMENTAUX EN GRILLE
+        # 📊 FONDAMENTAUX EN GRILLE (CORRIGÉ)
         st.markdown("<h3 class='section-title'>📋 Données Fondamentales</h3>", unsafe_allow_html=True)
         st.markdown(f"""
         <div class='fundamental-grid'>
             <div class='fund-card'>
                 <div class='fund-label'>📈 PER</div>
-                <div class='fund-value'>{fund['pe_ratio']:.1f}x' if fund['pe_ratio'] else 'N/A'}</div>
+                <div class='fund-value'>{f"{fund['pe_ratio']:.1f}x" if fund['pe_ratio'] else "N/A"}</div>
             </div>
             <div class='fund-card'>
                 <div class='fund-label'>💰 Rentable</div>
@@ -342,7 +337,7 @@ if submit:
             </div>
             <div class='fund-card'>
                 <div class='fund-label'>💵 Cash Flow</div>
-                <div class='fund-value'>{fund['free_cashflow']/1e9:.1f}B' if fund['free_cashflow'] else 'N/A'}</div>
+                <div class='fund-value'>{f"{fund['free_cashflow']/1e9:.1f}B" if fund['free_cashflow'] else "N/A"}</div>
             </div>
             <div class='fund-card'>
                 <div class='fund-label'>🏭 Secteur</div>
