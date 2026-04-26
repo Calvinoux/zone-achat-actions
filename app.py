@@ -30,7 +30,6 @@ st.markdown("""
     .brand-subtitle { color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.3rem; }
     @keyframes gradText { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
     
-    /* FORM STYLING */
     .stForm { background: transparent; border: none; }
     .stForm > div { background: transparent !important; }
     
@@ -39,8 +38,10 @@ st.markdown("""
     .control-panel input, .control-panel select { background: var(--bg-card) !important; border: 1px solid var(--border) !important; color: white !important; border-radius: 10px !important; padding: 0.6rem 0.8rem !important; width: 100% !important; transition: all 0.2s; }
     .control-panel input:focus, .control-panel select:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 2px rgba(20,184,166,0.2); outline: none; }
     .control-panel .stSlider > div > div > div > div { background: var(--accent) !important; }
+    .stRadio > div { flex-wrap: nowrap !important; gap: 0.5rem !important; }
+    .stRadio label { font-size: 0.85rem !important; padding: 0.4rem 0.8rem !important; border-radius: 8px !important; border: 1px solid var(--border) !important; transition: all 0.2s; }
+    .stRadio label:has(input:checked) { background: var(--accent-grad) !important; color: white !important; border-color: transparent !important; }
     
-    /* BOUTON SCAN ANIMÉ */
     .stFormSubmitButton button {
         background: var(--accent-grad) !important; background-size: 200% 200% !important;
         animation: btnPulse 3s ease infinite !important;
@@ -59,7 +60,6 @@ st.markdown("""
     @keyframes btnPulse { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
     @keyframes shine { 0%{left:-50%} 100%{left:150%} }
     
-    /* MÉTRIQUES CLÉS */
     .key-metrics-row { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; justify-content: center; }
     .key-card { flex: 1; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 1.2rem; text-align: center; transition: all 0.2s; }
     .key-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
@@ -79,6 +79,7 @@ st.markdown("""
     .alert-warning { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); color: #fbbf24; }
     .alert-success { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); color: #34d399; }
     .alert-danger { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #f87171; }
+    .alert-info { background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.3); color: #60a5fa; }
     .app-footer { text-align: center; margin-top: 2.5rem; padding: 1rem; color: var(--text-secondary); font-size: 0.75rem; border-top: 1px solid var(--border); }
 </style>
 """, unsafe_allow_html=True)
@@ -152,21 +153,47 @@ def detect_breakouts(df):
                     broken.append(prev); break
     return np.unique(np.round(broken, 2)) if broken else np.array([])
 
-def score_zone(price, fibs, rounds, demands, breakouts, ath, max_drop):
-    if price < ath * (1 - max_drop): return -1, []
+def score_zone(price, fibs, rounds, demands, breakouts, ath, min_drop, max_drop, scenario):
+    drop_from_ath = (ath - price) / ath
+    if drop_from_ath < min_drop or drop_from_ath > max_drop:
+        return -1, []
+
     reasons = []
-    s = 0
+    # Scores bruts
     fib_dev = min([abs(price-f)/f for f in [fibs['0.500'], fibs['0.618']]])
-    if fib_dev < 0.04: s += 40 * max(0, 1 - fib_dev * 5); reasons.append("Fibonacci 0.5/0.618")
+    fib_raw = 40 * max(0, 1 - fib_dev * 5) if fib_dev < 0.04 else 0
+    if fib_raw > 0: reasons.append("Fibonacci 0.5/0.618")
+
     round_dev = min([abs(price-r)/r for r in rounds])
-    if round_dev < 0.02: s += 20 * max(0, 1 - round_dev * 10); reasons.append("Niveau Psychologique")
+    round_raw = 20 * max(0, 1 - round_dev * 10) if round_dev < 0.02 else 0
+    if round_raw > 0: reasons.append("Niveau Psychologique")
+
+    dem_raw = 0
     if len(demands) > 0:
         dem_dev = min([abs(price-d)/d for d in demands])
-        if dem_dev < 0.04: s += 25 * max(0, 1 - dem_dev * 4); reasons.append("Zone de Demande")
+        if dem_dev < 0.04:
+            dem_raw = 25 * max(0, 1 - dem_dev * 4)
+            reasons.append("Zone de Demande")
+
+    brk_raw = 0
     if len(breakouts) > 0:
         brk_dev = min([abs(price-b)/b for b in breakouts])
-        if brk_dev < 0.03: s += 15 * max(0, 1 - brk_dev * 5); reasons.append("Breakout Retest")
-    return min(s, 100), reasons
+        if brk_dev < 0.03:
+            brk_raw = 15 * max(0, 1 - brk_dev * 5)
+            reasons.append("Breakout Retest")
+
+    # 🎛️ AJUSTEMENT PAR SCÉNARIO
+    if "Baissier" in scenario:
+        # Privilégie supports profonds & zones de demande
+        total = (fib_raw * 0.9 + round_raw * 0.7 + dem_raw * 1.5 + brk_raw * 0.8)
+    elif "Range" in scenario:
+        # Équilibre retour à la moyenne
+        total = (fib_raw + round_raw + dem_raw + brk_raw)
+    else:  # Haussier
+        # Favorise continuité de tendance & retests
+        total = (fib_raw * 1.2 + round_raw * 0.8 + dem_raw * 0.7 + brk_raw * 1.6)
+
+    return min(total, 100), reasons
 
 def backtest(df, zone):
     periods = 3 * 52
@@ -202,19 +229,27 @@ st.markdown("<div class='app-wrapper'>", unsafe_allow_html=True)
 st.markdown(LOGO_SVG, unsafe_allow_html=True)
 st.markdown("<div class='brand-header'><h1 class='brand-title'>BuyTheDip</h1><p class='brand-subtitle'>Points d'entrée institutionnels. Zéro bruit.</p></div>", unsafe_allow_html=True)
 
-# 🎯 FORMULAIRE AVEC SUPPORT NATIF ENTER
+# 🎯 FORMULAIRE AVANCÉ
 with st.form(key="scan_form", clear_on_submit=False):
     st.markdown("<div class='control-panel'>", unsafe_allow_html=True)
     c1, c2 = st.columns([2.5, 1], gap="medium")
     with c1: 
-        company = st.text_input("🏢 Entreprise", value="Apple", key="company", placeholder="Ex: Apple, Tesla, Nvidia...")
+        company = st.text_input("🏢 Entreprise", value="Apple", key="company", placeholder="Ex: Apple, Tesla...")
     with c2: 
         st.markdown("<br>", unsafe_allow_html=True)
         submit = st.form_submit_button("⚡ SCAN", use_container_width=True)
     
-    cols = st.columns(2, gap="medium")
-    with cols[0]: currency = st.selectbox("💱 Devise", ["$", "€", "£"], index=0, key="currency")
-    with cols[1]: max_drop = st.slider("📉 Max Drawdown (%)", 50, 90, 81, key="max_drop")
+    # Ligne 1: Devise | Scénario | Score Min
+    cols1 = st.columns(3, gap="medium")
+    with cols1[0]: currency = st.selectbox("💱 Devise", ["$", "€", "£"], index=0, key="currency")
+    with cols1[1]: scenario = st.radio("📊 Scénario", ["🐻 Baissier", "⚖️ Range", "🐂 Haussier"], horizontal=True, key="scenario")
+    with cols1[2]: min_score = st.slider("🎯 Score min", 0, 100, 50, key="min_score")
+
+    # Ligne 2: Drawdowns
+    cols2 = st.columns(2, gap="medium")
+    with cols2[0]: min_drop = st.slider("📉 Mini Drawdown (%)", 0, 50, 10, key="min_drop")
+    with cols2[1]: max_drop = st.slider("📈 Max Drawdown (%)", 20, 90, 81, key="max_drop")
+    
     st.markdown("</div>", unsafe_allow_html=True)
 
 if submit:
@@ -232,6 +267,9 @@ if submit:
         atl = df['Low'].min()
         market_cap = get_market_cap(ticker)
         
+        if min_drop >= max_drop:
+            st.error("❌ Le Mini Drawdown doit être inférieur au Max Drawdown."); st.stop()
+        
         fibs = calc_fib(ath, atl)
         rounds = find_rounds(current)
         demands = detect_demand(df)
@@ -239,13 +277,14 @@ if submit:
         
         best_price, best_score, best_reasons = 0, 0, []
         for p in df['Close']:
-            sc, reasons = score_zone(p, fibs, rounds, demands, breakouts, ath, max_drop/100)
+            sc, reasons = score_zone(p, fibs, rounds, demands, breakouts, ath, min_drop/100, max_drop/100, scenario)
             if sc > best_score: best_price, best_score, best_reasons = p, sc, reasons
             
-        min_allowed = ath * (1 - max_drop/100)
-        if best_score == 0: best_price = min_allowed
+        if best_score == 0:
+            mid_drop = (min_drop + max_drop) / 2
+            best_price = ath * (1 - mid_drop/100)
             
-        valid_zone = best_score >= 50
+        valid_zone = best_score >= min_score
         drop = ((best_price - ath) / ath) * 100
         ret_3y, ret_ann = backtest(df, best_price)
         
@@ -264,9 +303,18 @@ if submit:
         st.markdown("<h3 class='section-title'>💡 Pourquoi entrer à ce prix ?</h3>", unsafe_allow_html=True)
         if valid_zone:
             main_reason = best_reasons[0] if best_reasons else "Alignement technique optimal sur support majeur"
-            st.markdown(f"<div class='alert-box alert-success'>✅ <b>Raison principale :</b> Le prix cible converge avec <u>{main_reason}</u>, créant une zone d'accumulation à forte probabilité historique. Score >50 validé.</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='alert-box alert-success'>✅ <b>Raison principale :</b> Le prix cible converge avec <u>{main_reason}</u>. Score {best_score:.0f}/100 ≥ {min_score} (seuil config).</div>", unsafe_allow_html=True)
         else:
-            st.markdown("<div class='alert-box alert-danger'>🛑 <b>Zone non validée :</b> Score de confluence < 50. Les indicateurs ne s'alignent pas suffisamment pour justifier une entrée sécurisée actuellement.</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='alert-box alert-danger'>🛑 <b>Zone non validée :</b> Score {best_score:.0f}/100 < {min_score}. La confluence est insuffisante pour ce scénario.</div>", unsafe_allow_html=True)
+        
+        # CONFIGURATION APPLIQUÉE
+        st.markdown("<h3 class='section-title'>⚙️ Configuration Appliquée</h3>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class='alert-box alert-info'>
+        📊 <b>Scénario :</b> {scenario} | 🎯 <b>Score min requis :</b> {min_score}/100<br>
+        📉 <b>Plage de correction :</b> -{min_drop}% à -{max_drop}% vs ATH ({currency}{ath:.2f})
+        </div>
+        """, unsafe_allow_html=True)
             
         # DÉTAILS TECHNIQUES
         st.markdown("<h3 class='section-title'>🔍 Confluence & Backtest</h3>", unsafe_allow_html=True)
