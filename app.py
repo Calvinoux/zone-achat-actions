@@ -6,11 +6,12 @@ import requests
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import warnings
+import streamlit.components.v1 as components
 
 warnings.filterwarnings('ignore')
 st.set_page_config(page_title="BuyTheDip | Smart Entry Points", layout="centered", page_icon="📈")
 
-# 🎨 CSS PREMIUM & LAYOUT ÉPURÉ
+# 🎨 CSS PREMIUM (Fond noir uniforme, Logo, Animations)
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -25,13 +26,14 @@ st.markdown("""
     
     .app-wrapper { max-width: 960px; margin: 0 auto; padding: 2rem 1rem; }
     .brand-header { text-align: center; margin-bottom: 1.5rem; }
+    .brand-logo { width: 80px; height: 80px; margin: 0 auto 1rem; display: block; }
     .brand-title { font-size: 2.4rem; font-weight: 800; background: var(--accent-grad); background-size: 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: gradText 4s ease infinite; letter-spacing: -0.5px; margin: 0; }
     .brand-subtitle { color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.3rem; }
     @keyframes gradText { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
     
-    .control-panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+    .control-panel { background: transparent; border: none; padding: 1.5rem 0; margin-bottom: 1.5rem; }
     .control-panel label { color: var(--text-secondary) !important; font-size: 0.75rem !important; font-weight: 600 !important; margin-bottom: 0.4rem !important; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
-    .control-panel input, .control-panel select { background: #0f1118 !important; border: 1px solid #2a2e39 !important; color: white !important; border-radius: 10px !important; padding: 0.6rem 0.8rem !important; width: 100% !important; transition: all 0.2s; }
+    .control-panel input, .control-panel select { background: var(--bg-card) !important; border: 1px solid var(--border) !important; color: white !important; border-radius: 10px !important; padding: 0.6rem 0.8rem !important; width: 100% !important; transition: all 0.2s; }
     .control-panel input:focus, .control-panel select:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 2px rgba(20,184,166,0.2); outline: none; }
     .control-panel .stSlider > div > div > div > div { background: var(--accent) !important; }
     
@@ -54,9 +56,9 @@ st.markdown("""
     @keyframes btnPulse { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
     @keyframes shine { 0%{left:-50%} 100%{left:150%} }
     
-    /* MÉTRIQUES CLÉS AU-DESSUS DU GRAPHIQUE */
+    /* MÉTRIQUES CLÉS */
     .key-metrics-row { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; justify-content: center; }
-    .key-card { flex: 1; min-width: 200px; background: #0f1118; border: 1px solid #2a2e39; border-radius: 14px; padding: 1.2rem; text-align: center; transition: all 0.2s; }
+    .key-card { flex: 1; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 1.2rem; text-align: center; transition: all 0.2s; }
     .key-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
     .key-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 0.5rem; }
     .key-value { font-size: 1.6rem; font-weight: 800; color: var(--text-primary); }
@@ -75,8 +77,26 @@ st.markdown("""
     .alert-success { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); color: #34d399; }
     .alert-danger { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #f87171; }
     .app-footer { text-align: center; margin-top: 2.5rem; padding: 1rem; color: var(--text-secondary); font-size: 0.75rem; border-top: 1px solid var(--border); }
+    
+    /* ENTER KEY HINT */
+    .enter-hint { text-align: center; color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.5rem; opacity: 0.7; }
 </style>
 """, unsafe_allow_html=True)
+
+# 🖼️ LOGO SVG (Flèche ascendante pro)
+LOGO_SVG = """
+<svg class="brand-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="logoGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#0ea5e9;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#14b8a6;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+    <rect x="5" y="5" width="90" height="90" rx="20" fill="none" stroke="url(#logoGrad)" stroke-width="4"/>
+    <path d="M25 65 L45 45 L60 55 L80 25" fill="none" stroke="url(#logoGrad)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M70 25 L80 25 L80 35" fill="none" stroke="url(#logoGrad)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+"""
 
 # ───────── LOGIQUE MÉTIER ─────────
 @st.cache_data(ttl=3600)
@@ -149,7 +169,7 @@ def score_zone(price, fibs, rounds, demands, breakouts, ath, max_drop):
     return min(s, 100), reasons
 
 def backtest(df, zone):
-    periods = 3 * 52  # 3 ans fixe
+    periods = 3 * 52
     idx = np.argmin(np.abs(df['Close'].values - zone))
     exit_idx = min(idx + periods, len(df)-1)
     total = (df.iloc[exit_idx]['Close'] - df.iloc[idx]['Close']) / df.iloc[idx]['Close'] * 100
@@ -177,27 +197,43 @@ def build_chart(df, z_mid, currency, valid_zone):
     fig.update_yaxes(showgrid=False, row=2, col=1)
     return fig
 
-# 🖥️ INTERFACE PRINCIPALE
+# 🖥️ INTERFACE
 st.markdown("<div class='app-wrapper'>", unsafe_allow_html=True)
-st.markdown("""
-<div class='brand-header'>
-    <h1 class='brand-title'>BuyTheDip</h1>
-</div>
-<p class='brand-subtitle'>Points d'entrée institutionnels. Zéro bruit.</p>
-""", unsafe_allow_html=True)
 
+# LOGO + TITRE
+st.markdown(LOGO_SVG, unsafe_allow_html=True)
+st.markdown("<div class='brand-header'><h1 class='brand-title'>BuyTheDip</h1><p class='brand-subtitle'>Points d'entrée institutionnels. Zéro bruit.</p></div>", unsafe_allow_html=True)
+
+# PANEL DE CONTRÔLE (SANS FOND VERT)
 with st.container():
     st.markdown("<div class='control-panel'>", unsafe_allow_html=True)
     c1, c2 = st.columns([2.5, 1], gap="medium")
-    with c1: company = st.text_input("🏢 Entreprise", value="Apple", key="company")
+    with c1: company = st.text_input("🏢 Entreprise", value="Apple", key="company", help="Appuyez sur Entrée pour scanner")
     with c2: 
         st.markdown("<br>", unsafe_allow_html=True)
         analyze = st.button("⚡ SCAN", type="primary", use_container_width=True, key="analyze")
+    
+    st.markdown("<div class='enter-hint'>⌨️ Appuyez sur Entrée pour lancer le scan</div>", unsafe_allow_html=True)
         
-    cols = st.columns(3, gap="medium")
+    cols = st.columns(2, gap="medium")
     with cols[0]: currency = st.selectbox("💱 Devise", ["$", "€", "£"], index=0, key="currency")
     with cols[1]: max_drop = st.slider("📉 Max Drawdown (%)", 50, 90, 81, key="max_drop")
     st.markdown("</div>", unsafe_allow_html=True)
+
+# Script pour activer Enter key
+components.html("""
+<script>
+const input = document.querySelector('input[data-testid="stTextInput"]');
+if (input) {
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            const btn = document.querySelector('button[kind="primary"]');
+            if (btn) btn.click();
+        }
+    });
+}
+</script>
+""", height=0, width=0)
 
 if analyze:
     with st.spinner("⚙️ Scan des confluences..."):
@@ -231,7 +267,7 @@ if analyze:
         drop = ((best_price - ath) / ath) * 100
         ret_3y, ret_ann = backtest(df, best_price)
         
-        # 📊 MÉTRIQUES CLÉS AU-DESSUS DU GRAPHIQUE
+        # MÉTRIQUES CLÉS
         st.markdown("<div class='key-metrics-row'>", unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
         with c1: st.markdown(f"<div class='key-card'><div class='key-label'>💰 Prix Actuel</div><div class='key-value'>{current:.2f} {currency}</div><div class='key-delta delta-neg'>{((current-ath)/ath)*100:.1f}% vs ATH</div></div>", unsafe_allow_html=True)
@@ -239,10 +275,10 @@ if analyze:
         with c3: st.markdown(f"<div class='key-card'><div class='key-label'>🏢 Market Cap</div><div class='key-value'>{market_cap}</div></div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
         
-        # 📈 GRAPHIQUE
+        # GRAPHIQUE
         st.plotly_chart(build_chart(df, best_price, currency, valid_zone), use_container_width=True)
         
-        # 💡 RAISON PRINCIPALE
+        # RAISON PRINCIPALE
         st.markdown("<h3 class='section-title'>💡 Pourquoi entrer à ce prix ?</h3>", unsafe_allow_html=True)
         if valid_zone:
             main_reason = best_reasons[0] if best_reasons else "Alignement technique optimal sur support majeur"
@@ -250,7 +286,7 @@ if analyze:
         else:
             st.markdown("<div class='alert-box alert-danger'>🛑 <b>Zone non validée :</b> Score de confluence < 50. Les indicateurs ne s'alignent pas suffisamment pour justifier une entrée sécurisée actuellement.</div>", unsafe_allow_html=True)
             
-        # 📊 DÉTAILS TECHNIQUES
+        # DÉTAILS TECHNIQUES
         st.markdown("<h3 class='section-title'>🔍 Confluence & Backtest</h3>", unsafe_allow_html=True)
         ca, cb, cc, cd = st.columns(4, gap="small")
         with ca: st.markdown(f"<div class='card'><div class='metric-label'>⭐ Score</div><div class='metric-value'>{best_score:.0f}/100</div></div>", unsafe_allow_html=True)
@@ -264,6 +300,6 @@ if analyze:
             
         st.caption("⚖️ BuyTheDip est un outil d'aide à la décision. Ne constitue pas un conseil financier.")
 else:
-    st.info("👈 Entrez une entreprise et cliquez sur **⚡ SCAN**")
+    st.info("👈 Entrez une entreprise et cliquez sur **⚡ SCAN** ou appuyez sur Entrée")
 
 st.markdown("<div class='app-footer'>📈 BuyTheDip © 2024 | One Target. All Timeframes.</div></div>", unsafe_allow_html=True)
