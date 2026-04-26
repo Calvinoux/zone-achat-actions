@@ -118,7 +118,6 @@ def resolve_ticker(name):
     return None, None
 
 def fetch_data(ticker, years):
-    # Map années → période Yahoo Finance
     period_map = {1: "1y", 3: "3y", 5: "5y", 10: "10y"}
     period = period_map.get(years, "5y")
     return yf.Ticker(ticker).history(interval="1wk", period=period).dropna(subset=['Close', 'Volume', 'High', 'Low'])
@@ -206,14 +205,16 @@ def score_zone(price, fibs, rounds, demands, breakouts, ath):
         if brk_dev < 0.03: s += 15 * max(0, 1 - brk_dev * 5); reasons.append("Breakout")
     return min(s, 100), reasons
 
-def find_two_zones(df, fibs, rounds, demands, breakouts, ath):
+def find_two_zones(df, fibs, rounds, demands, breakouts, ath, threshold):
     candidates = []
     for p in df['Close']:
         sc, reasons = score_zone(p, fibs, rounds, demands, breakouts, ath)
-        if sc > 30:
+        if sc >= threshold:  # 🎯 FILTRE ACTIF PAR PRÉCISION
             candidates.append({'price': p, 'score': sc, 'reasons': reasons})
+
     if len(candidates) < 2:
-        return ath * 0.75, ath * 0.65, "Fallback Fibonacci"
+        return ath * 0.75, ath * 0.65, f"Précision trop haute (≥{threshold}). Fallback Fibonacci activé."
+
     candidates.sort(key=lambda x: x['score'], reverse=True)
     zone1 = candidates[0]['price']
     for c in candidates[1:]:
@@ -222,8 +223,9 @@ def find_two_zones(df, fibs, rounds, demands, breakouts, ath):
             break
     else:
         zone2 = zone1 * 0.95
+        
     if zone2 > zone1: zone1, zone2 = zone2, zone1
-    return zone1, zone2, "Confluence technique"
+    return zone1, zone2, f"Confluence validée (Seuil ≥{threshold})"
 
 def backtest(df, zone_low, zone_high, years):
     periods = int(years * 52)
@@ -252,9 +254,7 @@ def build_chart(df, zone_low, zone_high, currency, valid_zone, years):
         fig.add_hline(y=df['High'].max(), line_dash="dash", line_color="#ef5350", line_width=1, opacity=0.6)
         fig.add_hline(y=df.iloc[-1]['Close'], line_dash="dot", line_color="#60a5fa", line_width=1, opacity=0.6)
     
-    # Ajuster la hauteur selon l'horizon
     height = 400 if years <= 1 else (500 if years <= 3 else 580)
-    
     fig.update_layout(height=height, template='plotly_dark', plot_bgcolor='#131722', paper_bgcolor='#131722',
                       font=dict(color='#d1d4dc', family="Inter", size=11), xaxis_rangeslider_visible=False, 
                       showlegend=False, hovermode='x unified', margin=dict(l=10, r=10, t=20, b=10),
@@ -281,17 +281,20 @@ with st.form(key="scan_form", clear_on_submit=False):
     
     cols = st.columns(3, gap="medium")
     with cols[0]: currency = st.selectbox("💱 Devise", ["$", "€", "£"], index=0, key="currency")
-    with cols[1]: min_score = st.slider("🎯 Score min", 0, 100, 50, key="min_score")
+    with cols[1]: precision = st.selectbox("🎯 Précision", ["Faible", "Moyenne", "Haute"], index=1, key="precision")
     with cols[2]: hold_years = st.selectbox("⏳ Horizon", [1, 3, 5, 10], index=1, key="hold_years")
     st.markdown("</div>", unsafe_allow_html=True)
 
 if submit:
-    with st.spinner(f"⚙️ Scan sur {hold_years} an(s)..."):
+    # 🗺️ MAPPING DES PALIERS DE PRÉCISION
+    threshold_map = {"Faible": 40, "Moyenne": 60, "Haute": 80}
+    threshold = threshold_map[precision]
+
+    with st.spinner(f"⚙️ Scan sur {hold_years} an(s) (Précision: {precision})..."):
         ticker, full_name = resolve_ticker(company)
         if not ticker:
             st.error("❌ Actif introuvable."); st.stop()
             
-        # 🔄 FETCH DATA AVEC HORIZON DYNAMIQUE
         df = fetch_data(ticker, hold_years)
         if df.empty:
             st.error(f"❌ Données insuffisantes sur {hold_years} an(s)."); st.stop()
@@ -309,9 +312,9 @@ if submit:
         demands = detect_demand(df)
         breakouts = detect_breakouts(df)
         
-        # 🎯 ZONES CALCULÉES SUR LA PÉRIODE SÉLECTIONNÉE
-        zone_high, zone_low, zone_method = find_two_zones(df, fibs, rounds, demands, breakouts, ath)
-        valid_zone = True
+        # 🎯 ZONES FILTRÉES PAR PRÉCISION
+        zone_high, zone_low, zone_method = find_two_zones(df, fibs, rounds, demands, breakouts, ath, threshold)
+        valid_zone = "Fallback" not in zone_method
         
         ret_total, ret_ann = backtest(df, zone_low, zone_high, hold_years)
         
@@ -353,21 +356,24 @@ if submit:
         </div>
         """, unsafe_allow_html=True)
         
-        # 📊 GRAPHIQUE DYNAMIQUE (période ajustée)
+        # 📊 GRAPHIQUE DYNAMIQUE
         st.plotly_chart(build_chart(df, zone_low, zone_high, currency, valid_zone, hold_years), use_container_width=True)
         
         # 💡 RAISON
         st.markdown("<h3 class='section-title'>💡 Pourquoi cette zone ?</h3>", unsafe_allow_html=True)
-        st.markdown(f"<div class='alert-box alert-success'>✅ <b>Méthode :</b> {zone_method}. Analyse sur {hold_years} an(s) | {len(df)} semaines. Accumulez entre {currency}{zone_low:.2f} et {currency}{zone_high:.2f}.</div>", unsafe_allow_html=True)
+        if valid_zone:
+            st.markdown(f"<div class='alert-box alert-success'>✅ <b>Méthode :</b> {zone_method}. Analyse sur {hold_years} an(s) | {len(df)} semaines. Accumulez entre {currency}{zone_low:.2f} et {currency}{zone_high:.2f}.</div>", unsafe_allow_html=True)
+        else:
+            st.markdown(f"<div class='alert-box alert-warning'>⚠️ <b>Note :</b> {zone_method}. Les critères de précision {precision} sont très stricts sur cette période. La zone affichée est une estimation structurelle.</div>", unsafe_allow_html=True)
         
         # ⚙️ CONFIG
         st.markdown("<h3 class='section-title'>⚙️ Configuration</h3>", unsafe_allow_html=True)
-        st.markdown(f"<div class='alert-box alert-info'>🎯 Score min: {min_score}/100 | 💱 Devise: {currency} | ⏳ Horizon: {hold_years} an(s) | 📊 Données: {len(df)} semaines</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='alert-box alert-info'>🎯 Précision: {precision} (Seuil ≥{threshold}) | 💱 Devise: {currency} | ⏳ Horizon: {hold_years} an(s) | 📊 Données: {len(df)} semaines</div>", unsafe_allow_html=True)
         
         # 🔍 CONFLUENCE & BACKTEST
         st.markdown("<h3 class='section-title'>🔍 Confluence & Performance</h3>", unsafe_allow_html=True)
         ca, cb, cc, cd = st.columns(4, gap="small")
-        with ca: st.markdown(f"<div class='card'><div class='metric-label'>⭐ Score Zone</div><div class='metric-value'>{score_zone((zone_low+zone_high)/2, fibs, rounds, demands, breakouts, ath)[0]:.0f}/100</div></div>", unsafe_allow_html=True)
+        with ca: st.markdown(f"<div class='card'><div class='metric-label'>⭐ Score Moyen</div><div class='metric-value'>{score_zone((zone_low+zone_high)/2, fibs, rounds, demands, breakouts, ath)[0]:.0f}/100</div></div>", unsafe_allow_html=True)
         with cb: st.markdown(f"<div class='card'><div class='metric-label'>🔢 Fibonacci</div><div class='metric-value' style='font-size:0.85rem;'>0.5: {fibs['0.500']:.2f}<br>0.618: {fibs['0.618']:.2f}</div></div>", unsafe_allow_html=True)
         with cc: st.markdown(f"<div class='card'><div class='metric-label'>📥 Demande</div><div class='metric-value' style='font-size:0.85rem;'>{len(demands)} zone(s)</div></div>", unsafe_allow_html=True)
         with cd: st.markdown(f"<div class='card'><div class='metric-label'>🚀 Breakout</div><div class='metric-value' style='font-size:0.85rem;'>{len(breakouts)} niveau(x)</div></div>", unsafe_allow_html=True)
