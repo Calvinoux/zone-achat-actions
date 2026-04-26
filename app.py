@@ -230,8 +230,6 @@ def create_snowflake_chart(scores):
     categories = ['Value', 'Growth', 'Profitability', 'Health', 'Dividend']
     values = [scores['value'], scores['growth'], scores['profitability'], scores['health'], scores['dividend']]
     values += values[:1]
-    angles = np.linspace(0, 2 * np.pi, len(categories), endpoint=False).tolist() + [0]
-    
     fig = go.Figure()
     fig.add_trace(go.Scatterpolar(r=values, theta=categories + [categories[0]], fill='toself',
                                   fillcolor='rgba(59, 130, 246, 0.2)', line=dict(color='#3b82f6', width=3), name='Score'))
@@ -368,13 +366,19 @@ if submit:
             st.plotly_chart(create_price_chart(df, zone_low, zone_high, currency), use_container_width=True, key="price")
             st.markdown("</div>", unsafe_allow_html=True)
             
-        # 📋 FONDAMENTAUX
+        # 📋 FONDAMENTAUX (CORRIGÉ SANS BACKSLASH)
         st.markdown("<div class='sww-panel'>", unsafe_allow_html=True)
         st.markdown("<div class='section-title'>📋 Données Fondamentales</div>", unsafe_allow_html=True)
+        
+        pe_txt = f"{fund['pe_ratio']:.1f}x" if fund['pe_ratio'] else "N/A"
+        prof_txt = "✅ Oui" if fund["profitable"] else "❌ Non"
+        prof_col = "#10b981" if fund["profitable"] else "#ef4444"
+        cf_txt = f"{fund['free_cashflow']/1e9:.1f}B" if fund['free_cashflow'] else "N/A"
+        
         fc1, fc2, fc3, fc4 = st.columns(4)
-        with fc1: st.markdown(f"<div class='sww-fund'><div class='sww-fund-label'>📈 PER</div><div class='sww-fund-value'>{f\"{fund['pe_ratio']:.1f}x\" if fund['pe_ratio'] else \"N/A\"}</div></div>", unsafe_allow_html=True)
-        with fc2: st.markdown(f"<div class='sww-fund'><div class='sww-fund-label'>💰 Rentable</div><div class='sww-fund-value' style='color:{\"#10b981\" if fund[\"profitable\"] else \"#ef4444\"}'>{\"✅ Oui\" if fund[\"profitable\"] else \"❌ Non\"}</div></div>", unsafe_allow_html=True)
-        with fc3: st.markdown(f"<div class='sww-fund'><div class='sww-fund-label'>💵 Cash Flow</div><div class='sww-fund-value'>{f\"{fund['free_cashflow']/1e9:.1f}B\" if fund['free_cashflow'] else \"N/A\"}</div></div>", unsafe_allow_html=True)
+        with fc1: st.markdown(f"<div class='sww-fund'><div class='sww-fund-label'>📈 PER</div><div class='sww-fund-value'>{pe_txt}</div></div>", unsafe_allow_html=True)
+        with fc2: st.markdown(f"<div class='sww-fund'><div class='sww-fund-label'>💰 Rentable</div><div class='sww-fund-value' style='color:{prof_col}'>{prof_txt}</div></div>", unsafe_allow_html=True)
+        with fc3: st.markdown(f"<div class='sww-fund'><div class='sww-fund-label'>💵 Cash Flow</div><div class='sww-fund-value'>{cf_txt}</div></div>", unsafe_allow_html=True)
         with fc4: st.markdown(f"<div class='sww-fund'><div class='sww-fund-label'>🏭 Secteur</div><div class='sww-fund-value'>{fund['sector']}</div></div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
         
