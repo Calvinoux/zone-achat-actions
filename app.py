@@ -117,8 +117,11 @@ def resolve_ticker(name):
     except: pass
     return None, None
 
-def fetch_data(ticker):
-    return yf.Ticker(ticker).history(interval="1wk", period="10y").dropna(subset=['Close', 'Volume', 'High', 'Low'])
+def fetch_data(ticker, years):
+    # Map années → période Yahoo Finance
+    period_map = {1: "1y", 3: "3y", 5: "5y", 10: "10y"}
+    period = period_map.get(years, "5y")
+    return yf.Ticker(ticker).history(interval="1wk", period=period).dropna(subset=['Close', 'Volume', 'High', 'Low'])
 
 def get_fundamentals(ticker):
     try:
@@ -228,26 +231,34 @@ def backtest(df, zone_low, zone_high, years):
     exit_idx = min(idx + periods, len(df)-1)
     entry = (zone_low + zone_high) / 2
     total = (df.iloc[exit_idx]['Close'] - entry) / entry * 100
-    annual = ((1 + total/100)**(1/years) - 1)*100
+    annual = ((1 + total/100)**(1/years) - 1)*100 if years > 0 else 0
     return total, annual
 
-def build_chart(df, zone_low, zone_high, currency, valid_zone):
+def build_chart(df, zone_low, zone_high, currency, valid_zone, years):
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.75, 0.25])
     fig.add_trace(go.Candlestick(x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
                                  increasing_line_color='#26a69a', decreasing_line_color='#ef5350'), row=1, col=1)
     colors = ['#26a69a' if c >= o else '#ef5350' for c, o in zip(df['Close'], df['Open'])]
     fig.add_trace(go.Bar(x=df.index, y=df['Volume'], marker_color=colors, opacity=0.6), row=2, col=1)
-    if valid_zone:
+    
+    if valid_zone and len(df) > 0:
         fig.add_hrect(y0=zone_low, y1=zone_high, fillcolor="rgba(0, 255, 0, 0.15)", line_width=0,
                       annotation_text=f"🎯 ZONE: {currency}{zone_low:.2f} → {currency}{zone_high:.2f}",
                       annotation_position="top right", annotation_font=dict(color="#00ff00", size=10))
         fig.add_hline(y=zone_low, line_width=2, line_color="#00ff00", line_dash="dot", opacity=0.7)
         fig.add_hline(y=zone_high, line_width=2, line_color="#00ff00", line_dash="dot", opacity=0.7)
-    fig.add_hline(y=df['High'].max(), line_dash="dash", line_color="#ef5350", line_width=1, opacity=0.6)
-    fig.add_hline(y=df.iloc[-1]['Close'], line_dash="dot", line_color="#60a5fa", line_width=1, opacity=0.6)
-    fig.update_layout(height=580, template='plotly_dark', plot_bgcolor='#131722', paper_bgcolor='#131722',
+    
+    if len(df) > 0:
+        fig.add_hline(y=df['High'].max(), line_dash="dash", line_color="#ef5350", line_width=1, opacity=0.6)
+        fig.add_hline(y=df.iloc[-1]['Close'], line_dash="dot", line_color="#60a5fa", line_width=1, opacity=0.6)
+    
+    # Ajuster la hauteur selon l'horizon
+    height = 400 if years <= 1 else (500 if years <= 3 else 580)
+    
+    fig.update_layout(height=height, template='plotly_dark', plot_bgcolor='#131722', paper_bgcolor='#131722',
                       font=dict(color='#d1d4dc', family="Inter", size=11), xaxis_rangeslider_visible=False, 
-                      showlegend=False, hovermode='x unified', margin=dict(l=10, r=10, t=20, b=10))
+                      showlegend=False, hovermode='x unified', margin=dict(l=10, r=10, t=20, b=10),
+                      title=f"📊 {years} an(s) | {len(df)} semaines de données")
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#2a2e39', zerolinecolor='#2a2e39')
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#2a2e39', zerolinecolor='#2a2e39', row=1, col=1)
     fig.update_yaxes(showgrid=False, row=2, col=1)
@@ -275,14 +286,15 @@ with st.form(key="scan_form", clear_on_submit=False):
     st.markdown("</div>", unsafe_allow_html=True)
 
 if submit:
-    with st.spinner("⚙️ Scan des confluences..."):
+    with st.spinner(f"⚙️ Scan sur {hold_years} an(s)..."):
         ticker, full_name = resolve_ticker(company)
         if not ticker:
             st.error("❌ Actif introuvable."); st.stop()
             
-        df = fetch_data(ticker)
+        # 🔄 FETCH DATA AVEC HORIZON DYNAMIQUE
+        df = fetch_data(ticker, hold_years)
         if df.empty:
-            st.error("❌ Données insuffisantes."); st.stop()
+            st.error(f"❌ Données insuffisantes sur {hold_years} an(s)."); st.stop()
             
         current = df.iloc[-1]['Close']
         ath = df['High'].max()
@@ -297,6 +309,7 @@ if submit:
         demands = detect_demand(df)
         breakouts = detect_breakouts(df)
         
+        # 🎯 ZONES CALCULÉES SUR LA PÉRIODE SÉLECTIONNÉE
         zone_high, zone_low, zone_method = find_two_zones(df, fibs, rounds, demands, breakouts, ath)
         valid_zone = True
         
@@ -340,18 +353,18 @@ if submit:
         </div>
         """, unsafe_allow_html=True)
         
-        # 📊 GRAPHIQUE
-        st.plotly_chart(build_chart(df, zone_low, zone_high, currency, valid_zone), use_container_width=True)
+        # 📊 GRAPHIQUE DYNAMIQUE (période ajustée)
+        st.plotly_chart(build_chart(df, zone_low, zone_high, currency, valid_zone, hold_years), use_container_width=True)
         
         # 💡 RAISON
         st.markdown("<h3 class='section-title'>💡 Pourquoi cette zone ?</h3>", unsafe_allow_html=True)
-        st.markdown(f"<div class='alert-box alert-success'>✅ <b>Méthode :</b> {zone_method}. Accumulez progressivement entre {currency}{zone_low:.2f} et {currency}{zone_high:.2f}.</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='alert-box alert-success'>✅ <b>Méthode :</b> {zone_method}. Analyse sur {hold_years} an(s) | {len(df)} semaines. Accumulez entre {currency}{zone_low:.2f} et {currency}{zone_high:.2f}.</div>", unsafe_allow_html=True)
         
         # ⚙️ CONFIG
         st.markdown("<h3 class='section-title'>⚙️ Configuration</h3>", unsafe_allow_html=True)
-        st.markdown(f"<div class='alert-box alert-info'>🎯 Score min: {min_score}/100 | 💱 Devise: {currency} | ⏳ Horizon: {hold_years} an(s)</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='alert-box alert-info'>🎯 Score min: {min_score}/100 | 💱 Devise: {currency} | ⏳ Horizon: {hold_years} an(s) | 📊 Données: {len(df)} semaines</div>", unsafe_allow_html=True)
         
-        # 🔍 CONFLUENCE & BACKTEST DYNAMIQUE
+        # 🔍 CONFLUENCE & BACKTEST
         st.markdown("<h3 class='section-title'>🔍 Confluence & Performance</h3>", unsafe_allow_html=True)
         ca, cb, cc, cd = st.columns(4, gap="small")
         with ca: st.markdown(f"<div class='card'><div class='metric-label'>⭐ Score Zone</div><div class='metric-value'>{score_zone((zone_low+zone_high)/2, fibs, rounds, demands, breakouts, ath)[0]:.0f}/100</div></div>", unsafe_allow_html=True)
