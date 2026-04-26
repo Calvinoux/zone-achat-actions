@@ -6,11 +6,13 @@ import requests
 import warnings
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import base64
+from pathlib import Path
 
 warnings.filterwarnings('ignore')
 st.set_page_config(page_title="BuyTheDip | Smart Entry Points", layout="centered", page_icon="📈")
 
-# 🎨 CSS PRO (BuyTheDip Branding)
+# 🎨 CSS PROFESSIONNEL BUYTHEDIP
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -25,7 +27,7 @@ st.markdown("""
     
     .app-wrapper { max-width: 1000px; margin: 0 auto; padding: 1.5rem 0; }
     .brand-header { display: flex; align-items: center; justify-content: center; margin-bottom: 0.5rem; }
-    .brand-logo { width: 50px; height: 50px; margin-right: 12px; border-radius: 10px; }
+    .brand-logo { width: 50px; height: 50px; margin-right: 12px; border-radius: 10px; object-fit: contain; }
     .brand-title { font-size: 2rem; font-weight: 800; background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.5px; }
     .brand-subtitle { color: var(--text-secondary); font-size: 0.9rem; margin-top: -0.2rem; text-align: center; }
     
@@ -54,6 +56,15 @@ st.markdown("""
     .app-footer { text-align: center; margin-top: 2rem; padding: 1rem; color: var(--text-secondary); font-size: 0.8rem; border-top: 1px solid var(--border); }
 </style>
 """, unsafe_allow_html=True)
+
+# 🖼️ GESTION DU LOGO
+def get_logo():
+    logo_path = Path("logo.png")
+    if logo_path.exists():
+        encoded = base64.b64encode(open(logo_path, 'rb').read()).decode()
+        return f'<img src="image/png;base64,{encoded}" class="brand-logo">'
+    # Fallback visuel si le fichier n'est pas encore uploadé
+    return '<div style="width:50px;height:50px;margin-right:12px;border-radius:10px;background:linear-gradient(135deg,#1e3a8a,#14b8a6);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:1.5rem;">B</div>'
 
 # ───────── LOGIQUE MÉTIER ─────────
 @st.cache_data(ttl=3600)
@@ -119,44 +130,39 @@ def backtest(df, zone, years):
 def build_tv_chart(df, z_mid, currency):
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.75, 0.25])
     
-    # Bougies
     fig.add_trace(go.Candlestick(
         x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
         name='Prix', increasing_line_color='#26a69a', decreasing_line_color='#ef5350',
         increasing_fillcolor='#26a69a', decreasing_fillcolor='#ef5350'
     ), row=1, col=1)
     
-    # Volume
     colors = ['#26a69a' if c >= o else '#ef5350' for c, o in zip(df['Close'], df['Open'])]
     fig.add_trace(go.Bar(x=df.index, y=df['Volume'], name='Volume', marker_color=colors, opacity=0.6), row=2, col=1)
     
-    # 🟢 LIGNE VERTE DYNAMIQUE (ancrée à l'axe Y)
+    # 🟢 LIGNE VERTE DYNAMIQUE (ancrée à l'axe Y, suit le zoom/pan)
     fig.add_hline(y=z_mid, line_width=3, line_color="#00ff00", line_dash="solid", 
                   annotation_text=f"🎯 ZONE: {currency}{z_mid:.2f}", annotation_position="right",
                   annotation_font=dict(color="#00ff00", size=11, family="Inter"))
     
-    # ATH & Actuel
     fig.add_hline(y=df['High'].max(), line_dash="dash", line_color="#ef5350", line_width=1, opacity=0.7)
     fig.add_hline(y=df.iloc[-1]['Close'], line_dash="dot", line_color="#60a5fa", line_width=1, opacity=0.7)
     
-    # Style TradingView Dark
     fig.update_layout(
         height=620, template='plotly_dark', plot_bgcolor='#131722', paper_bgcolor='#131722',
         font=dict(color='#d1d4dc', family="Inter", size=11),
         xaxis_rangeslider_visible=False, showlegend=False, hovermode='x unified',
-        margin=dict(l=10, r=10, t=30, b=10),
-        gridcolor='#2a2e39', zerolinecolor='#2a2e39'
+        margin=dict(l=10, r=10, t=30, b=10)
     )
-    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#2a2e39')
-    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#2a2e39', row=1, col=1)
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#2a2e39', zerolinecolor='#2a2e39')
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#2a2e39', zerolinecolor='#2a2e39', row=1, col=1)
     fig.update_yaxes(showgrid=False, row=2, col=1)
     return fig
 
-# 🖥️ INTERFACE
+# 🖥️ INTERFACE PRINCIPALE
 st.markdown("<div class='app-wrapper'>", unsafe_allow_html=True)
-st.markdown("""
+st.markdown(f"""
 <div class='brand-header'>
-    <div class='brand-logo' style='background:var(--accent-gradient); display:flex; align-items:center; justify-content:center; font-size:1.8rem; color:white; font-weight:800;'>B</div>
+    {get_logo()}
     <div><div class='brand-title'>BuyTheDip</div></div>
 </div>
 <p class='brand-subtitle'>Identifie les meilleurs points d'entrée sur les corrections</p>
@@ -185,6 +191,10 @@ if analyze:
             st.stop()
             
         df = fetch_data(ticker, interval)
+        if df.empty:
+            st.error("❌ Aucune donnée disponible pour cet actif sur cette période.")
+            st.stop()
+            
         current = df.iloc[-1]['Close']
         ath = df['High'].max()
         atl = df['Low'].min()
