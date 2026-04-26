@@ -10,7 +10,7 @@ import warnings
 warnings.filterwarnings('ignore')
 st.set_page_config(page_title="BuyTheDip | Simply Wall St Style", layout="wide", page_icon="📈")
 
-# 🎨 CSS STYLE SIMPLY WALL ST (Streamlit-safe)
+# 🎨 CSS VISUEL (Uniquement pour le style, pas pour la structure)
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -23,58 +23,56 @@ st.markdown("""
     .main { background-color: var(--bg-main); color: var(--text-primary); font-family: 'Inter', system-ui, sans-serif; }
     header, footer, [data-testid="stDecoration"], .stDeployButton { display: none !important; }
     
-    .sww-header { text-align: center; margin-bottom: 2rem; padding: 2rem; background: white; border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .sww-title { font-size: 2.2rem; font-weight: 800; color: var(--sww-blue); letter-spacing: -0.5px; margin: 0; }
-    .sww-subtitle { color: var(--text-secondary); font-size: 1rem; margin-top: 0.5rem; }
+    /* Header centré */
+    .sww-header { text-align: center; margin-bottom: 1.5rem; }
+    .sww-title { font-size: 2rem; font-weight: 800; color: var(--sww-blue); margin: 0; letter-spacing: -0.5px; }
+    .sww-subtitle { color: var(--text-secondary); font-size: 0.95rem; margin-top: 0.4rem; }
     
-    .sww-panel { background: white; border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .sww-label { color: var(--text-secondary) !important; font-size: 0.75rem !important; font-weight: 600 !important; margin-bottom: 0.4rem !important; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
-    
-    .sww-btn button {
-        background: linear-gradient(135deg, var(--sww-blue), var(--sww-purple)) !important;
-        color: white !important; border: none !important; border-radius: 8px !important;
-        padding: 0.8rem 0 !important; font-weight: 600 !important; font-size: 1rem !important;
-        width: 100% !important; box-shadow: 0 4px 6px rgba(59,130,246,0.2) !important;
-    }
-    .sww-btn button:hover { transform: translateY(-1px); box-shadow: 0 6px 12px rgba(59,130,246,0.3) !important; }
-    
-    .sww-card { background: white; border-radius: 12px; padding: 1.25rem; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: transform 0.2s; height: 100%; }
-    .sww-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    .sww-label-sm { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 0.5rem; font-weight: 600; }
-    .sww-value { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); }
-    .sww-delta { font-size: 0.85rem; margin-top: 0.3rem; font-weight: 600; }
+    /* Cartes & Métriques */
+    .sww-card { background: white; border-radius: 12px; padding: 1.2rem; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.06); border: 1px solid var(--border); }
+    .sww-label-sm { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 0.4rem; font-weight: 600; }
+    .sww-value { font-size: 1.4rem; font-weight: 700; color: var(--text-primary); }
+    .sww-delta { font-size: 0.8rem; margin-top: 0.2rem; font-weight: 600; }
     .delta-pos { color: var(--sww-green); } .delta-neg { color: var(--sww-red); }
     
-    .sww-metric { background: #f9fafb; border-radius: 10px; padding: 1rem; text-align: center; height: 100%; }
-    .sww-metric-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem; font-weight: 600; }
-    .sww-metric-value { font-size: 1.4rem; font-weight: 700; color: var(--text-primary); }
-    .sww-grade { font-size: 0.8rem; font-weight: 600; margin-top: 0.2rem; }
+    /* Radar & Graphiques */
+    .chart-box { background: white; border-radius: 12px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06); border: 1px solid var(--border); }
+    .section-title { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.8rem; text-align: left; }
+    
+    /* Métriques Radar */
+    .sww-metric { background: #f9fafb; border-radius: 8px; padding: 0.8rem; text-align: center; border: 1px solid var(--border); }
+    .sww-metric-label { font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 0.2rem; font-weight: 600; }
+    .sww-metric-value { font-size: 1.2rem; font-weight: 700; color: var(--text-primary); }
+    .sww-grade { font-size: 0.75rem; font-weight: 600; margin-top: 0.1rem; }
     .grade-a { color: var(--sww-green); } .grade-b { color: var(--sww-blue); } 
     .grade-c { color: var(--sww-orange); } .grade-d { color: var(--sww-red); }
     
-    .sww-fund { background: #f9fafb; border-radius: 8px; padding: 0.9rem; text-align: center; height: 100%; }
-    .sww-fund-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem; font-weight: 600; }
-    .sww-fund-value { font-size: 1.1rem; font-weight: 600; color: var(--text-primary); }
+    /* Fondamentaux */
+    .sww-fund { background: #f9fafb; border-radius: 8px; padding: 0.8rem; text-align: center; border: 1px solid var(--border); }
+    .sww-fund-label { font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 0.2rem; font-weight: 600; }
+    .sww-fund-value { font-size: 1rem; font-weight: 600; color: var(--text-primary); }
     
-    .sww-badge { display: inline-block; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+    /* Badges & Alertes */
+    .sww-badge { display: inline-block; padding: 0.3rem 0.8rem; border-radius: 16px; font-size: 0.8rem; font-weight: 600; }
     .risk-low { background: rgba(16,185,129,0.1); color: var(--sww-green); border: 1px solid var(--sww-green); }
     .risk-med { background: rgba(245,158,11,0.1); color: var(--sww-orange); border: 1px solid var(--sww-orange); }
     .risk-high { background: rgba(239,68,68,0.1); color: var(--sww-red); border: 1px solid var(--sww-red); }
     
-    .sww-alert { padding: 1rem 1.25rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid; font-size: 0.9rem; }
-    .alert-success { background: rgba(16,185,129,0.05); border-color: var(--sww-green); color: var(--text-primary); }
-    .alert-warning { background: rgba(245,158,11,0.05); border-color: var(--sww-orange); color: var(--text-primary); }
-    .alert-info { background: rgba(59,130,246,0.05); border-color: var(--sww-blue); color: var(--text-primary); }
+    .sww-alert { padding: 0.9rem 1rem; border-radius: 8px; margin: 0.8rem 0; border-left: 4px solid; font-size: 0.85rem; background: white; }
+    .alert-success { border-color: var(--sww-green); }
+    .alert-warning { border-color: var(--sww-orange); }
+    .alert-info { border-color: var(--sww-blue); }
     
-    .section-title { font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
-    .chart-box { background: white; border-radius: 12px; padding: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); height: 100%; }
-    .footer { text-align: center; margin-top: 3rem; padding: 1.5rem; color: var(--text-secondary); font-size: 0.8rem; border-top: 1px solid var(--border); }
+    .footer { text-align: center; margin-top: 2rem; padding: 1rem; color: var(--text-secondary); font-size: 0.75rem; border-top: 1px solid var(--border); }
+    
+    /* Override Streamlit defaults pour alignement */
+    .stColumn > div { display: flex; flex-direction: column; }
 </style>
 """, unsafe_allow_html=True)
 
 # 🖼️ LOGO SVG
 LOGO_SVG = """
-<svg width="44" height="44" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+<svg width="40" height="40" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <defs>
         <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
@@ -232,56 +230,60 @@ def create_snowflake_chart(scores):
     values += values[:1]
     fig = go.Figure()
     fig.add_trace(go.Scatterpolar(r=values, theta=categories + [categories[0]], fill='toself',
-                                  fillcolor='rgba(59, 130, 246, 0.2)', line=dict(color='#3b82f6', width=3), name='Score'))
+                                  fillcolor='rgba(59, 130, 246, 0.15)', line=dict(color='#3b82f6', width=2.5), name='Score'))
     fig.add_trace(go.Scatterpolar(r=values[:-1], theta=categories, mode='markers+text',
-                                  marker=dict(size=8, color='#3b82f6'), text=[str(v) for v in values[:-1]],
-                                  textposition='top center', textfont=dict(size=12, color='#111827', weight='bold'), name='Points'))
+                                  marker=dict(size=6, color='#3b82f6'), text=[str(v) for v in values[:-1]],
+                                  textposition='top center', textfont=dict(size=11, color='#111827', weight='bold'), name='Points'))
     fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 6], tickvals=[0,2,4,6], tickcolor='#e5e7eb', gridcolor='#e5e7eb'),
                                  angularaxis=dict(tickcolor='#e5e7eb', gridcolor='#e5e7eb', rotation=90, direction='clockwise'),
-                                 bgcolor='rgba(249, 250, 251, 0.5)'),
-                      showlegend=False, margin=dict(l=20, r=20, t=20, b=20), height=380, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                                 bgcolor='rgba(255,255,255,0)'),
+                      showlegend=False, margin=dict(l=10, r=10, t=10, b=10), height=340, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
     return fig
 
 def create_price_chart(df, zone_low, zone_high, currency):
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.7, 0.3])
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.02, row_heights=[0.7, 0.3])
     fig.add_trace(go.Scatter(x=df.index, y=df['Close'], mode='lines', line=dict(color='#3b82f6', width=2),
-                             name='Prix', fill='tozeroy', fillcolor='rgba(59, 130, 246, 0.08)'), row=1, col=1)
-    fig.add_hrect(y0=zone_low, y1=zone_high, fillcolor="rgba(16, 185, 129, 0.12)", line_width=0)
-    fig.add_hline(y=zone_low, line_width=2, line_color="#10b981", line_dash="dash")
-    fig.add_hline(y=zone_high, line_width=2, line_color="#10b981", line_dash="dash")
-    fig.add_hline(y=df['High'].max(), line_dash="dash", line_color="#ef4444", line_width=1, opacity=0.6)
+                             name='Prix', fill='tozeroy', fillcolor='rgba(59, 130, 246, 0.06)'), row=1, col=1)
+    fig.add_hrect(y0=zone_low, y1=zone_high, fillcolor="rgba(16, 185, 129, 0.1)", line_width=0)
+    fig.add_hline(y=zone_low, line_width=1.5, line_color="#10b981", line_dash="dash")
+    fig.add_hline(y=zone_high, line_width=1.5, line_color="#10b981", line_dash="dash")
+    fig.add_hline(y=df['High'].max(), line_dash="dash", line_color="#ef4444", line_width=1, opacity=0.5)
     
     colors = ['#10b981' if df['Close'].iloc[i] >= df['Open'].iloc[i] else '#ef4444' for i in range(len(df))]
-    fig.add_trace(go.Bar(x=df.index, y=df['Volume'], marker_color=colors, opacity=0.5, name='Volume'), row=2, col=1)
+    fig.add_trace(go.Bar(x=df.index, y=df['Volume'], marker_color=colors, opacity=0.4, name='Volume'), row=2, col=1)
     
-    fig.update_layout(height=480, template='plotly_white', plot_bgcolor='white', paper_bgcolor='white',
-                      font=dict(color='#111827', family="Inter", size=11), showlegend=False, hovermode='x unified',
-                      margin=dict(l=10, r=10, t=10, b=10))
+    fig.update_layout(height=420, template='plotly_white', plot_bgcolor='white', paper_bgcolor='white',
+                      font=dict(color='#111827', family="Inter", size=10), showlegend=False, hovermode='x unified',
+                      margin=dict(l=8, r=8, t=8, b=8))
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#f3f4f6', zeroline=False)
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#f3f4f6', zeroline=False, row=1, col=1)
     fig.update_yaxes(showgrid=False, row=2, col=1)
     return fig
 
-# 🖥️ INTERFACE
-st.markdown("<div class='main'>", unsafe_allow_html=True)
-st.markdown(f"""
-<div class='sww-header'>
-    {LOGO_SVG}
-    <h1 class='sww-title'>BuyTheDip</h1>
-    <p class='sww-subtitle'>Analyse fondamentale & technique inspirée de Simply Wall St</p>
-</div>
-""", unsafe_allow_html=True)
+# 🖥️ INTERFACE PRINCIPALE
+with st.container():
+    # Header centré proprement
+    st.markdown(f"""
+    <div class="sww-header">
+        {LOGO_SVG}
+        <h1 class="sww-title">BuyTheDip</h1>
+        <p class="sww-subtitle">Analyse fondamentale & technique inspirée de Simply Wall St</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-with st.form(key="scan_form", clear_on_submit=False):
-    st.markdown("<div class='sww-panel'>", unsafe_allow_html=True)
-    cols = st.columns([3, 1, 1, 1])
-    with cols[0]: company = st.text_input("🏢 Entreprise", value="Apple", key="company", placeholder="Ex: Apple, Tesla...")
-    with cols[1]: currency = st.selectbox("💱 Devise", ["$", "€", "£"], index=0, key="currency")
-    with cols[2]: precision = st.selectbox("🎯 Précision", ["Faible", "Moyenne", "Haute"], index=1, key="precision")
-    with cols[3]: hold_years = st.selectbox("⏳ Horizon", [1, 3, 5, 10], index=1, key="hold_years")
-    st.markdown("<br>", unsafe_allow_html=True)
-    submit = st.form_submit_button("⚡ Analyser", use_container_width=True, type="primary")
-    st.markdown("</div>", unsafe_allow_html=True)
+    # Formulaire
+    with st.form(key="scan_form", clear_on_submit=False):
+        col_form1, col_form2 = st.columns([3, 1])
+        with col_form1:
+            company = st.text_input("🏢 Entreprise", value="Apple", key="company", placeholder="Ex: Apple, Tesla...")
+        with col_form2:
+            st.write("")
+            submit = st.form_submit_button("⚡ Analyser", use_container_width=True, type="primary")
+            
+        col_opts1, col_opts2, col_opts3 = st.columns(3)
+        with col_opts1: currency = st.selectbox("💱 Devise", ["$", "€", "£"], index=0, key="currency")
+        with col_opts2: precision = st.selectbox("🎯 Précision", ["Faible", "Moyenne", "Haute"], index=1, key="precision")
+        with col_opts3: hold_years = st.selectbox("⏳ Horizon", [1, 3, 5, 10], index=1, key="hold_years")
 
 if submit:
     threshold_map = {"Faible": 40, "Moyenne": 60, "Haute": 80}
@@ -334,19 +336,21 @@ if submit:
             
         drop = ((zone_low - ath) / ath) * 100
         
-        # 📊 MÉTRIQUES CLÉS
+        # 📊 MÉTRIQUES CLÉS (4 colonnes équilibrées)
+        st.divider()
         c1, c2, c3, c4 = st.columns(4)
         with c1: st.markdown(f"<div class='sww-card'><div class='sww-label-sm'>💰 Prix Actuel</div><div class='sww-value'>{current:.2f} {currency}</div><div class='sww-delta delta-neg'>{((current-ath)/ath)*100:.1f}% vs ATH</div></div>", unsafe_allow_html=True)
         with c2: st.markdown(f"<div class='sww-card'><div class='sww-label-sm'>🎯 Zone d'achat</div><div class='sww-value'>{zone_low:.2f} → {zone_high:.2f}</div><div class='sww-delta delta-pos'>{drop:.1f}% vs ATH</div></div>", unsafe_allow_html=True)
         with c3: st.markdown(f"<div class='sww-card'><div class='sww-label-sm'>🏢 Market Cap</div><div class='sww-value'>{fund['market_cap']/1e9:.1f}B {currency}</div></div>", unsafe_allow_html=True)
         with c4: st.markdown(f"<div class='sww-card'><div class='sww-label-sm'>⭐ Score Total</div><div class='sww-value'>{total_score}/30</div><div class='sww-delta'>Sur 5 critères</div></div>", unsafe_allow_html=True)
         
-        # 📊 SNOWFLAKE + GRAPHIQUE
-        col1, col2 = st.columns([1, 2])
-        with col1:
+        # 📊 SNOWFLAKE + GRAPHIQUE PRIX
+        col_left, col_right = st.columns([1, 2])
+        with col_left:
             st.markdown("<div class='chart-box'>", unsafe_allow_html=True)
             st.markdown("<div class='section-title'>📊 Snowflake Analysis</div>", unsafe_allow_html=True)
             st.plotly_chart(create_snowflake_chart(section_scores), use_container_width=True, key="snow")
+            st.divider()
             
             mc1, mc2 = st.columns(2)
             metrics = [('value','💎 Value'), ('growth','📈 Growth'), ('profitability','💰 Profit'), ('health','💪 Santé'), ('dividend','💵 Dividende')]
@@ -361,13 +365,13 @@ if submit:
                 idx += 1
             st.markdown("</div>", unsafe_allow_html=True)
             
-        with col2:
+        with col_right:
             st.markdown("<div class='chart-box'>", unsafe_allow_html=True)
             st.plotly_chart(create_price_chart(df, zone_low, zone_high, currency), use_container_width=True, key="price")
             st.markdown("</div>", unsafe_allow_html=True)
             
-        # 📋 FONDAMENTAUX (CORRIGÉ SANS BACKSLASH)
-        st.markdown("<div class='sww-panel'>", unsafe_allow_html=True)
+        # 📋 FONDAMENTAUX (Variables préparées pour éviter les erreurs de syntaxe)
+        st.divider()
         st.markdown("<div class='section-title'>📋 Données Fondamentales</div>", unsafe_allow_html=True)
         
         pe_txt = f"{fund['pe_ratio']:.1f}x" if fund['pe_ratio'] else "N/A"
@@ -380,35 +384,31 @@ if submit:
         with fc2: st.markdown(f"<div class='sww-fund'><div class='sww-fund-label'>💰 Rentable</div><div class='sww-fund-value' style='color:{prof_col}'>{prof_txt}</div></div>", unsafe_allow_html=True)
         with fc3: st.markdown(f"<div class='sww-fund'><div class='sww-fund-label'>💵 Cash Flow</div><div class='sww-fund-value'>{cf_txt}</div></div>", unsafe_allow_html=True)
         with fc4: st.markdown(f"<div class='sww-fund'><div class='sww-fund-label'>🏭 Secteur</div><div class='sww-fund-value'>{fund['sector']}</div></div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
         
-        # 🛡️ RISQUE
+        # 🛡️ RISQUE & RECOMMANDATION
         st.markdown(f"<div style='text-align:center; margin:1rem 0;'><span class='sww-badge {risk_class}'>🛡️ Risque: {risk_label} (Score: {risk_score}/100)</span></div>", unsafe_allow_html=True)
         
-        # 💡 RECOMMANDATION
-        st.markdown("<div class='sww-panel'>", unsafe_allow_html=True)
         st.markdown("<div class='section-title'>💡 Recommandation</div>", unsafe_allow_html=True)
         if drop < -20:
             st.markdown(f"<div class='sww-alert alert-success'>✅ <b>Opportunité d'achat</b> : L'action est {abs(drop):.1f}% sous son ATH. Zone d'entrée entre <b>{currency}{zone_low:.2f}</b> et <b>{currency}{zone_high:.2f}</b> avec forte confluence.</div>", unsafe_allow_html=True)
         else:
             st.markdown(f"<div class='sww-alert alert-warning'>⚠️ <b>Attente recommandée</b> : Proche de l'ATH ({drop:.1f}%). Privilégiez un DCA ou patientez.</div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-        
+            
         st.markdown(f"<div class='sww-alert alert-info'><b>Config :</b> Précision {precision} (≥{threshold}) | Horizon {hold_years} an(s) | Données: {len(df)} semaines</div>", unsafe_allow_html=True)
         st.caption("⚖️ BuyTheDip est un outil d'aide à la décision. Ne constitue pas un conseil financier.")
 else:
     st.markdown("""
-    <div style='text-align:center; padding:4rem 2rem; background:white; border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); margin-top:2rem;'>
-        <div style='font-size:4rem; margin-bottom:1rem;'>📊</div>
-        <h2 style='color:#111827; margin-bottom:0.5rem;'>Analyse complète style Simply Wall St</h2>
-        <p style='color:#6b7280; margin-bottom:2rem;'>Entrez une entreprise pour obtenir :</p>
-        <div style='display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; max-width:700px; margin:0 auto;'>
-            <div style='background:#f9fafb; padding:1.2rem; border-radius:8px;'><div style='font-size:1.5rem; margin-bottom:0.3rem;'>📊</div><div style='font-weight:600;'>Snowflake</div></div>
-            <div style='background:#f9fafb; padding:1.2rem; border-radius:8px;'><div style='font-size:1.5rem; margin-bottom:0.3rem;'>💎</div><div style='font-weight:600;'>Value</div></div>
-            <div style='background:#f9fafb; padding:1.2rem; border-radius:8px;'><div style='font-size:1.5rem; margin-bottom:0.3rem;'>📈</div><div style='font-weight:600;'>Growth</div></div>
-            <div style='background:#f9fafb; padding:1.2rem; border-radius:8px;'><div style='font-size:1.5rem; margin-bottom:0.3rem;'>💰</div><div style='font-weight:600;'>Profit</div></div>
+    <div style='text-align:center; padding:3rem 1rem; background:white; border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,0.06); border:1px solid #e5e7eb; margin-top:1rem;'>
+        <div style='font-size:3rem; margin-bottom:0.8rem;'>📊</div>
+        <h2 style='color:#111827; margin-bottom:0.4rem; font-size:1.4rem;'>Analyse complète style Simply Wall St</h2>
+        <p style='color:#6b7280; margin-bottom:1.5rem; font-size:0.9rem;'>Entrez une entreprise pour obtenir :</p>
+        <div style='display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:0.8rem; max-width:600px; margin:0 auto;'>
+            <div style='background:#f9fafb; padding:1rem; border-radius:8px; border:1px solid #e5e7eb;'><div style='font-size:1.3rem; margin-bottom:0.2rem;'>📊</div><div style='font-weight:600; font-size:0.9rem;'>Snowflake</div></div>
+            <div style='background:#f9fafb; padding:1rem; border-radius:8px; border:1px solid #e5e7eb;'><div style='font-size:1.3rem; margin-bottom:0.2rem;'>💎</div><div style='font-weight:600; font-size:0.9rem;'>Value</div></div>
+            <div style='background:#f9fafb; padding:1rem; border-radius:8px; border:1px solid #e5e7eb;'><div style='font-size:1.3rem; margin-bottom:0.2rem;'>📈</div><div style='font-weight:600; font-size:0.9rem;'>Growth</div></div>
+            <div style='background:#f9fafb; padding:1rem; border-radius:8px; border:1px solid #e5e7eb;'><div style='font-size:1.3rem; margin-bottom:0.2rem;'>💰</div><div style='font-weight:600; font-size:0.9rem;'>Profit</div></div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown("<div class='footer'>📈 BuyTheDip © 2024 | Inspired by Simply Wall St</div></div>", unsafe_allow_html=True)
+st.markdown("<div class='footer'>📈 BuyTheDip © 2024 | Inspired by Simply Wall St</div>", unsafe_allow_html=True)
