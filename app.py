@@ -119,8 +119,7 @@ def resolve_ticker(name):
 
 def fetch_data(ticker, years):
     period_map = {1: "1y", 3: "3y", 5: "5y", 10: "10y"}
-    period = period_map.get(years, "5y")
-    return yf.Ticker(ticker).history(interval="1wk", period=period).dropna(subset=['Close', 'Volume', 'High', 'Low'])
+    return yf.Ticker(ticker).history(interval="1wk", period=period_map.get(years, "5y")).dropna(subset=['Close', 'Volume', 'High', 'Low'])
 
 def get_fundamentals(ticker):
     try:
@@ -131,14 +130,13 @@ def get_fundamentals(ticker):
             'free_cashflow': info.get('freeCashflow'),
             'total_cash': info.get('totalCash'),
             'sector': info.get('sector', 'N/A'),
-            'industry': info.get('industry', 'N/A'),
             'beta': info.get('beta', 1.0),
             'debt_to_equity': info.get('debtToEquity'),
             'market_cap': info.get('marketCap', 0)
         }
     except:
         return {'pe_ratio': None, 'profitable': None, 'free_cashflow': None, 'total_cash': None, 
-                'sector': 'N/A', 'industry': 'N/A', 'beta': None, 'debt_to_equity': None, 'market_cap': 0}
+                'sector': 'N/A', 'beta': None, 'debt_to_equity': None, 'market_cap': 0}
 
 def calc_risk_score(fund, df):
     score = 0
@@ -205,28 +203,6 @@ def score_zone(price, fibs, rounds, demands, breakouts, ath):
         if brk_dev < 0.03: s += 15 * max(0, 1 - brk_dev * 5); reasons.append("Breakout")
     return min(s, 100), reasons
 
-def find_two_zones(df, fibs, rounds, demands, breakouts, ath, threshold):
-    candidates = []
-    for p in df['Close']:
-        sc, reasons = score_zone(p, fibs, rounds, demands, breakouts, ath)
-        if sc >= threshold:  # 🎯 FILTRE ACTIF PAR PRÉCISION
-            candidates.append({'price': p, 'score': sc, 'reasons': reasons})
-
-    if len(candidates) < 2:
-        return ath * 0.75, ath * 0.65, f"Précision trop haute (≥{threshold}). Fallback Fibonacci activé."
-
-    candidates.sort(key=lambda x: x['score'], reverse=True)
-    zone1 = candidates[0]['price']
-    for c in candidates[1:]:
-        if abs(c['price'] - zone1) / zone1 > 0.05:
-            zone2 = c['price']
-            break
-    else:
-        zone2 = zone1 * 0.95
-        
-    if zone2 > zone1: zone1, zone2 = zone2, zone1
-    return zone1, zone2, f"Confluence validée (Seuil ≥{threshold})"
-
 def backtest(df, zone_low, zone_high, years):
     periods = int(years * 52)
     idx = np.argmin(np.abs(df['Close'].values - (zone_low + zone_high)/2))
@@ -269,7 +245,6 @@ st.markdown("<div class='app-wrapper'>", unsafe_allow_html=True)
 st.markdown(LOGO_SVG, unsafe_allow_html=True)
 st.markdown("<div class='brand-header'><h1 class='brand-title'>BuyTheDip</h1><p class='brand-subtitle'>Points d'entrée institutionnels. Zéro bruit.</p></div>", unsafe_allow_html=True)
 
-# 🎯 FORMULAIRE ÉPURÉ
 with st.form(key="scan_form", clear_on_submit=False):
     st.markdown("<div class='control-panel'>", unsafe_allow_html=True)
     c1, c2 = st.columns([2.5, 1], gap="medium")
@@ -286,10 +261,6 @@ with st.form(key="scan_form", clear_on_submit=False):
     st.markdown("</div>", unsafe_allow_html=True)
 
 if submit:
-    # 🗺️ MAPPING DES PALIERS DE PRÉCISION
-    threshold_map = {"Faible": 40, "Moyenne": 60, "Haute": 80}
-    threshold = threshold_map[precision]
-
     with st.spinner(f"⚙️ Scan sur {hold_years} an(s) (Précision: {precision})..."):
         ticker, full_name = resolve_ticker(company)
         if not ticker:
@@ -312,13 +283,55 @@ if submit:
         demands = detect_demand(df)
         breakouts = detect_breakouts(df)
         
-        # 🎯 ZONES FILTRÉES PAR PRÉCISION
-        zone_high, zone_low, zone_method = find_two_zones(df, fibs, rounds, demands, breakouts, ath, threshold)
-        valid_zone = "Fallback" not in zone_method
+        # 🧠 CALCUL PRÉALABLE DE TOUS LES SCORES POUR DÉTECTER LE MAX HISTORIQUE
+        all_candidates = []
+        for p in df['Close']:
+            sc, reasons = score_zone(p, fibs, rounds, demands, breakouts, ath)
+            all_candidates.append({'price': p, 'score': sc, 'reasons': reasons})
+            
+        max_hist_score = max([c['score'] for c in all_candidates]) if all_candidates else 0
         
+        # 🎯 MAPPING DYNAMIQUE DE LA PRÉCISION
+        if precision == "Haute":
+            threshold = max_hist_score  # ✅ UTILISE TOUJOURS LA VALEUR MAXIMALE EXISTANTE
+            precision_label = f"Maximale ({threshold}/100)"
+        elif precision == "Moyenne":
+            threshold = 60
+            precision_label = "Moyenne (60/100)"
+        else:
+            threshold = 40
+            precision_label = "Faible (40/100)"
+            
+        valid_candidates = [c for c in all_candidates if c['score'] >= threshold]
+        
+        # Fallback intelligent si la précision haute est trop stricte
+        if len(valid_candidates) < 2:
+            if precision == "Haute":
+                valid_candidates = sorted(all_candidates, key=lambda x: x['score'], reverse=True)[:2]
+                precision_label += " (Top 2 historiques)"
+            else:
+                valid_candidates = sorted(all_candidates, key=lambda x: x['score'], reverse=True)[:2]
+                
+        # Extraction des 2 zones
+        if len(valid_candidates) >= 2:
+            valid_candidates.sort(key=lambda x: x['score'], reverse=True)
+            z1 = valid_candidates[0]['price']
+            for c in valid_candidates[1:]:
+                if abs(c['price'] - z1) / z1 > 0.05:
+                    z2 = c['price']
+                    break
+            else:
+                z2 = z1 * 0.95
+            zone_high, zone_low = (z1, z2) if z1 > z2 else (z2, z1)
+            zone_method = f"Confluence {precision_label}"
+        else:
+            zone_high, zone_low = ath * 0.75, ath * 0.65
+            zone_method = "Fallback structurel"
+            
+        valid_zone = "Fallback" not in zone_method
         ret_total, ret_ann = backtest(df, zone_low, zone_high, hold_years)
         
-        # 📈 MÉTRIQUES CLÉS
+        # 📈 MÉTRIQUES
         st.markdown("<div class='key-metrics-row'>", unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
         with c1: st.markdown(f"<div class='key-card'><div class='key-label'>💰 Prix Actuel</div><div class='key-value'>{current:.2f} {currency}</div><div class='key-delta delta-neg'>{((current-ath)/ath)*100:.1f}% vs ATH</div></div>", unsafe_allow_html=True)
@@ -326,26 +339,14 @@ if submit:
         with c3: st.markdown(f"<div class='key-card'><div class='key-label'>🏢 Market Cap</div><div class='key-value'>{fund['market_cap']/1e9:.1f}B {currency}</div></div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
         
-        # 📊 FONDAMENTAUX
+        # 📋 FONDAMENTAUX
         st.markdown("<h3 class='section-title'>📋 Données Fondamentales</h3>", unsafe_allow_html=True)
         st.markdown(f"""
         <div class='fundamental-grid'>
-            <div class='fund-card'>
-                <div class='fund-label'>📈 PER</div>
-                <div class='fund-value'>{f"{fund['pe_ratio']:.1f}x" if fund['pe_ratio'] else "N/A"}</div>
-            </div>
-            <div class='fund-card'>
-                <div class='fund-label'>💰 Rentable</div>
-                <div class='fund-value' style='color:{"#10b981" if fund["profitable"] else "#ef4444"}'>{"✅ Oui" if fund["profitable"] else "❌ Non"}</div>
-            </div>
-            <div class='fund-card'>
-                <div class='fund-label'>💵 Cash Flow</div>
-                <div class='fund-value'>{f"{fund['free_cashflow']/1e9:.1f}B" if fund['free_cashflow'] else "N/A"}</div>
-            </div>
-            <div class='fund-card'>
-                <div class='fund-label'>🏭 Secteur</div>
-                <div class='fund-value'>{fund['sector']}</div>
-            </div>
+            <div class='fund-card'><div class='fund-label'>📈 PER</div><div class='fund-value'>{f"{fund['pe_ratio']:.1f}x" if fund['pe_ratio'] else "N/A"}</div></div>
+            <div class='fund-card'><div class='fund-label'>💰 Rentable</div><div class='fund-value' style='color:{"#10b981" if fund["profitable"] else "#ef4444"}'>{"✅ Oui" if fund["profitable"] else "❌ Non"}</div></div>
+            <div class='fund-card'><div class='fund-label'>💵 Cash Flow</div><div class='fund-value'>{f"{fund['free_cashflow']/1e9:.1f}B" if fund['free_cashflow'] else "N/A"}</div></div>
+            <div class='fund-card'><div class='fund-label'>🏭 Secteur</div><div class='fund-value'>{fund['sector']}</div></div>
         </div>
         """, unsafe_allow_html=True)
         
@@ -356,19 +357,19 @@ if submit:
         </div>
         """, unsafe_allow_html=True)
         
-        # 📊 GRAPHIQUE DYNAMIQUE
+        # 📊 GRAPHIQUE
         st.plotly_chart(build_chart(df, zone_low, zone_high, currency, valid_zone, hold_years), use_container_width=True)
         
         # 💡 RAISON
         st.markdown("<h3 class='section-title'>💡 Pourquoi cette zone ?</h3>", unsafe_allow_html=True)
         if valid_zone:
-            st.markdown(f"<div class='alert-box alert-success'>✅ <b>Méthode :</b> {zone_method}. Analyse sur {hold_years} an(s) | {len(df)} semaines. Accumulez entre {currency}{zone_low:.2f} et {currency}{zone_high:.2f}.</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='alert-box alert-success'>✅ <b>Méthode :</b> {zone_method}. Analyse sur {hold_years} an(s). Accumulez entre {currency}{zone_low:.2f} et {currency}{zone_high:.2f}.</div>", unsafe_allow_html=True)
         else:
-            st.markdown(f"<div class='alert-box alert-warning'>⚠️ <b>Note :</b> {zone_method}. Les critères de précision {precision} sont très stricts sur cette période. La zone affichée est une estimation structurelle.</div>", unsafe_allow_html=True)
-        
+            st.markdown(f"<div class='alert-box alert-warning'>⚠️ <b>Note :</b> {zone_method}. La précision demandée dépasse les setups historiques disponibles. Zone structurelle affichée.</div>", unsafe_allow_html=True)
+            
         # ⚙️ CONFIG
         st.markdown("<h3 class='section-title'>⚙️ Configuration</h3>", unsafe_allow_html=True)
-        st.markdown(f"<div class='alert-box alert-info'>🎯 Précision: {precision} (Seuil ≥{threshold}) | 💱 Devise: {currency} | ⏳ Horizon: {hold_years} an(s) | 📊 Données: {len(df)} semaines</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='alert-box alert-info'>🎯 Précision: {precision_label} | 💱 Devise: {currency} | ⏳ Horizon: {hold_years} an(s) | 📊 Données: {len(df)} semaines | 📈 Max historique détecté: {max_hist_score}/100</div>", unsafe_allow_html=True)
         
         # 🔍 CONFLUENCE & BACKTEST
         st.markdown("<h3 class='section-title'>🔍 Confluence & Performance</h3>", unsafe_allow_html=True)
